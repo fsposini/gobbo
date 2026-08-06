@@ -116,6 +116,9 @@
   }
   .lettore-testo{
     position:absolute;left:0;right:0;top:0;
+    /* su uno schermo largo le righe diventerebbero lunghissime e illeggibili
+       da gobbo: si tiene la colonna stretta come su un telefono */
+    max-width:620px;margin-inline:auto;
     padding:0 22px;
     color:#fff;font-weight:600;line-height:1.42;
     text-shadow:0 2px 14px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.9);
@@ -128,6 +131,10 @@
     letter-spacing:.06em;line-height:1.4;margin:0 0 .9em;text-shadow:0 1px 6px rgba(0,0,0,.9);
   }
   .lettore-testo .stacco{height:.9em;margin:0 0 .75em;border-bottom:2px dashed rgba(255,255,255,.28)}
+  /* durante la taratura si legge solo il passaggio in chiaro */
+  .lettore-testo.inprova p,
+  .lettore-testo.inprova .stacco{opacity:.13;transition:opacity .2s}
+  .lettore-testo.inprova p.daleggere{opacity:1}
   .lettore-testo .fine{
     font-size:.44em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
     color:rgba(255,255,255,.5);text-align:center;margin-top:1.4em;
@@ -345,7 +352,7 @@
 <script>
 "use strict";
 
-const VERSIONE = "v2";
+const VERSIONE = "v4";
 document.getElementById("etichettaVersione").textContent = VERSIONE;
 
 /* =========================================================
@@ -413,7 +420,7 @@ function componiHtml(corpo){
     }
     const t = fuggi(b.replace(/\r?\n/g, " "))
       .replace(/\*\*(.+?)\*\*/g, '<span class="enfasi">$1</span>');
-    return "<p>" + t + "</p>";
+    return '<p class="detto">' + t + "</p>";   // "detto" = si legge ad alta voce
   });
   pezzi.push('<p class="fine">fine</p>');
   return pezzi.join("");
@@ -545,7 +552,7 @@ const esitoEl      = document.getElementById("esito");
 
 let stream = null, recorder = null, pezziVideo = [], wakeLock = null;
 let scorre = false, posizione = 0, ultimoFrame = 0, animazione = 0;
-let altezzaTesto = 0, paroleCopione = 0, avvioRec = 0, timerRec = 0;
+let altezzaTesto = 0, altezzaDetta = 0, paroleCopione = 0, avvioRec = 0, timerRec = 0;
 let modalitaCamera = true;
 
 // ascolto del microfono: ferma il testo quando smetti di parlare
@@ -576,11 +583,20 @@ function misuraTesto(){
   testoEl.style.paddingTop = sopra + "px";
   testoEl.style.paddingBottom = sotto + "px";
   altezzaTesto = Math.max(1, testoEl.scrollHeight - sopra - sotto);
+
+  // Quanti pixel occupa una parola DETTA. Va misurato sui soli paragrafi che si
+  // leggono ad alta voce: note di regia, stacchi e la scritta "fine" prendono
+  // spazio senza essere parole, e includerli faceva scorrere il testo più in
+  // fretta di quanto uno riesca a parlare.
+  const corpo = parseFloat(getComputedStyle(testoEl).fontSize) || 34;
+  let somma = 0, quanti = 0;
+  testoEl.querySelectorAll("p.detto").forEach(p => { somma += p.offsetHeight; quanti++; });
+  altezzaDetta = quanti ? somma + quanti * 0.75 * corpo : altezzaTesto;
 }
 
 function pxAlSecondo(){
-  if (!paroleCopione) return 40;
-  const pxPerParola = altezzaTesto / paroleCopione;
+  if (!paroleCopione || !altezzaDetta) return 40;
+  const pxPerParola = altezzaDetta / paroleCopione;
   return (cfg.velocita / 60) * pxPerParola;
 }
 
@@ -626,7 +642,10 @@ function azzeraAscolto(){
 }
 
 function ascoltoAttivo(){
-  return cfg.ascolto && analizzatore && !ascoltoArreso && modalitaCamera;
+  // Solo mentre si registra. Fuori dalla ripresa fermare il testo perché non
+  // parli è solo un impiccio: stai provando, non stai girando.
+  const registra = !!(recorder && recorder.state === "recording");
+  return cfg.ascolto && analizzatore && !ascoltoArreso && modalitaCamera && registra;
 }
 
 function valutaAscolto(ts){
@@ -725,13 +744,94 @@ function sistemaHud(){
   btnRec.style.display       = (inProva || !modalitaCamera) ? "none" : "";
   btnFineProva.style.display = inProva ? "" : "none";
   pillRis.style.display      = (inProva || registra) ? "none" : "";
+  // durante la taratura il testo sta fermo: i comandi di scorrimento
+  // confonderebbero e basta
+  ["btnPiuLento","btnScorri","btnDaCapo","btnPiuVeloce"].forEach(id => {
+    document.getElementById(id).style.display = inProva ? "none" : "";
+  });
   mostraStatoAscolto();
+}
+
+/* La taratura si fa su un passaggio FERMO, non su tutto il copione che scorre.
+   Prima era il contrario: se il testo ti scappava toccavi «Fine» in anticipo e
+   la misura veniva assurda. Un passaggio fermo non può scapparti. */
+let paroleProva = 0;
+
+function passaggioDiProva(){
+  // Durante la taratura la banda di lettura non serve: si usa tutta l'altezza
+  // dello schermo, così il passaggio da leggere è più lungo e la misura più solida.
+  testoEl.style.paddingTop = "70px";
+  const sopra  = 70;
+  const limite = window.innerHeight - 175;          // sopra la dissolvenza e i comandi
+  const scelti = [];
+  testoEl.querySelectorAll("p.detto").forEach(p => {
+    if (p.offsetTop >= sopra - 2 && p.offsetTop + p.offsetHeight <= limite) scelti.push(p);
+  });
+  if (!scelti.length){
+    const primo = testoEl.querySelector("p.detto");   // schermo piccolo o carattere grande
+    if (primo) scelti.push(primo);
+  }
+  return scelti;
+}
+
+function evidenziaPassaggio(paragrafi){
+  testoEl.classList.add("inprova");
+  testoEl.querySelectorAll("p, .stacco").forEach(e => e.classList.remove("daleggere"));
+  paragrafi.forEach(p => p.classList.add("daleggere"));
+}
+function togliEvidenza(){
+  testoEl.classList.remove("inprova");
+  testoEl.querySelectorAll(".daleggere").forEach(e => e.classList.remove("daleggere"));
+  applicaStile();       // rimette la banda di lettura al suo posto
+}
+
+function pannelloTaratura(titolo, testo, primario, secondario, valore){
+  document.getElementById("tarTitolo").textContent = titolo;
+  document.getElementById("tarTesto").textContent = testo;
+  const a = document.getElementById("tarAccetta"), b = document.getElementById("tarRifiuta");
+  a.style.display = primario ? "" : "none";
+  if (primario) a.textContent = primario;
+  b.textContent = secondario;
+  tarPannello.dataset.valore = valore == null ? "" : valore;
+  tarPannello.style.display = "grid";
 }
 
 btnProva.addEventListener("click", () => {
   if (inProva) return;
   daCapo();
   fermaScorrimento();
+  const paragrafi = passaggioDiProva();
+  paroleProva = paragrafi.reduce(
+    (n, p) => n + ((p.textContent.match(/[\p{L}\p{N}''-]+/gu) || []).length), 0);
+  if (paroleProva < 6){
+    pannelloTaratura("Passaggio troppo corto",
+      "Su questo schermo non entra abbastanza testo per misurare qualcosa di sensato. " +
+      "Riduci la dimensione del carattere nelle impostazioni e riprova.",
+      null, "Chiudi", null);
+    return;
+  }
+  evidenziaPassaggio(paragrafi);
+  pannelloTaratura("Tariamo il tuo ritmo",
+    "Il testo resterà fermo. Leggi ad alta voce, al tuo passo naturale, soltanto la parte " +
+    "in chiaro — sono " + paroleProva + " parole — e appena hai finito tocca «Ho finito». " +
+    "Non devi rincorrere niente.",
+    "Comincia", "Annulla", "avvio");
+});
+
+document.getElementById("tarAccetta").addEventListener("click", () => {
+  const v = tarPannello.dataset.valore;
+  tarPannello.style.display = "none";
+  if (v === "avvio"){ avviaTaratura(); return; }
+  const n = parseInt(v, 10);
+  if (n){ cfg.velocita = n; salvaCfg(); riflettiCfg(); }
+  togliEvidenza(); daCapo();
+});
+document.getElementById("tarRifiuta").addEventListener("click", () => {
+  tarPannello.style.display = "none";
+  togliEvidenza(); daCapo();
+});
+
+function avviaTaratura(){
   azzeraAscolto();
   contoAllaRovescia(() => {
     inProva = true;
@@ -739,61 +839,45 @@ btnProva.addEventListener("click", () => {
     avvioProva = Date.now();
     pillTempo.className = "pillola";
     pillTempo.style.display = "";
-    pillTempo.textContent = "prova 0:00";
+    pillTempo.textContent = "leggi 0:00";
     timerRec = setInterval(() => {
       const s = Math.floor((Date.now() - avvioProva) / 1000);
-      pillTempo.textContent = "prova " + Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
+      pillTempo.textContent = "leggi " + Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
     }, 250);
-    avviaScorrimento();
+    // niente avviaScorrimento(): durante la taratura il testo sta fermo
   });
-});
+}
 
 btnFineProva.addEventListener("click", () => {
   const secondi = (Date.now() - avvioProva) / 1000;
   inProva = false;
-  fermaScorrimento();
   clearInterval(timerRec);
   pillTempo.style.display = "none";
   pillTempo.className = "pillola rec";
   sistemaHud();
 
-  if (secondi < 5){
-    document.getElementById("tarTitolo").textContent = "Troppo poco";
-    document.getElementById("tarTesto").textContent =
-      "La prova è durata meno di cinque secondi: non basta per misurare niente. " +
-      "Rifalla leggendo il copione fino in fondo, poi tocca «Fine».";
-    document.getElementById("tarAccetta").style.display = "none";
-    tarPannello.style.display = "grid";
+  const misurato = Math.round(paroleProva / Math.max(secondi, 0.1) * 60);
+
+  // Fuori da questa forbice non è un parlato: prima applicavo lo stesso il valore
+  // limite (210), cioè il più veloce, e ogni tentativo peggiorava le cose.
+  if (misurato < 70 || misurato > 230){
+    pannelloTaratura("Misura non attendibile",
+      "Ho contato " + paroleProva + " parole in " + Math.round(secondi) + " secondi, cioè " +
+      misurato + " parole al minuto: non è un ritmo di parlato. Di solito vuol dire che hai " +
+      "toccato «Ho finito» prima o molto dopo aver letto il testo in chiaro. " +
+      "Non cambio niente. Puoi riprovare, oppure rimettere il valore di partenza.",
+      "Rimetti 140", "Lascia com'era", 140);
     return;
   }
 
-  const misurato = paroleCopione / secondi * 60;
   const proposto = Math.min(210, Math.max(80, Math.round(misurato / 5) * 5));
-  tarPannello.dataset.proposto = proposto;
-
-  let testo = "Hai letto " + paroleCopione + " parole in " + Math.round(secondi) +
-              " secondi: il tuo ritmo è " + Math.round(misurato) + " parole al minuto.";
-  if (proposto !== Math.round(misurato / 5) * 5){
-    testo += " È fuori dalla scala del cursore, quindi imposto " + proposto +
-             ", il valore più vicino possibile.";
-  }
-  document.getElementById("tarTitolo").textContent = "Il tuo ritmo";
-  document.getElementById("tarTesto").textContent = testo;
-  document.getElementById("tarAccetta").style.display = "";
-  document.getElementById("tarAccetta").textContent = "Usa " + proposto + " parole al minuto";
-  tarPannello.style.display = "grid";
+  pannelloTaratura("Il tuo ritmo",
+    "Hai letto " + paroleProva + " parole in " + Math.round(secondi) + " secondi: il tuo ritmo è " +
+    misurato + " parole al minuto." +
+    (proposto !== misurato ? " Arrotondo a " + proposto + "." : ""),
+    "Usa " + proposto + " parole al minuto", "Lascia com'era", proposto);
 });
 
-document.getElementById("tarAccetta").addEventListener("click", () => {
-  const p = parseInt(tarPannello.dataset.proposto, 10);
-  if (p){ cfg.velocita = p; salvaCfg(); riflettiCfg(); }
-  tarPannello.style.display = "none";
-  daCapo();
-});
-document.getElementById("tarRifiuta").addEventListener("click", () => {
-  tarPannello.style.display = "none";
-  daCapo();
-});
 
 let timeoutVel = 0;
 function lampeggiaVelocita(){
@@ -1053,6 +1137,7 @@ document.getElementById("btnEsci").addEventListener("click", async () => {
   esitoEl.style.display = "none";
   messaggioEl.style.display = "none";
   tarPannello.style.display = "none";
+  togliEvidenza();
   mostraSchermata("lista");
   caricaElenco(false);
 });

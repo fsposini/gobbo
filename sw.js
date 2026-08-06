@@ -1,7 +1,7 @@
 /* Gobbo — service worker
    La versione della cache DEVE coincidere con VERSIONE in index.html.
    Le due righe le allinea da sole PUBBLICA.bat: non modificarle a mano. */
-const CACHE = "gobbo-v2";
+const CACHE = "gobbo-v4";
 
 const GUSCIO = [
   "./",
@@ -36,22 +36,16 @@ self.addEventListener("fetch", ev => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // I copioni cambiano spesso: prima la rete, la cache è la rete di sicurezza offline.
-  if (url.pathname.includes("/scripts/")) {
-    ev.respondWith(
-      fetch(req)
-        .then(r => {
-          const copia = r.clone();
-          caches.open(CACHE).then(c => c.put(req, copia));
-          return r;
-        })
-        .catch(() => caches.match(req, { ignoreSearch: true }))
-    );
-    return;
-  }
-
-  // Il guscio dell'app: prima la cache, così parte anche senza rete.
+  // Prima la rete, sempre. La cache resta come rete di sicurezza quando non c'è
+  // campo. Prima il guscio dell'app veniva servito dalla cache e le correzioni
+  // non arrivavano mai al telefono: sembrava che i difetti non fossero riparati.
   ev.respondWith(
-    caches.match(req, { ignoreSearch: true }).then(hit => hit || fetch(req))
+    fetch(req)
+      .then(r => {
+        const copia = r.clone();
+        caches.open(CACHE).then(c => c.put(req, copia)).catch(() => {});
+        return r;
+      })
+      .catch(() => caches.match(req, { ignoreSearch: true }))
   );
 });
