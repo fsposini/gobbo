@@ -1,0 +1,12 @@
+Questo file, anche se vuoto di contenuto utile, ha un compito preciso:
+dice a GitHub Pages di pubblicare i file così come sono, senza passarli
+attraverso Jekyll.
+
+Serve per due motivi, e nessuno dei due è facoltativo:
+
+1. Jekyll trasformerebbe i copioni da .md a .html, e l'app non li
+   troverebbe più: cerca "scripts/nome.md", non "scripts/nome.html".
+2. Jekyll faceva fallire la costruzione del sito (6 agosto 2026, due
+   tentativi andati in errore prima che questo file esistesse).
+
+Non cancellarlo.

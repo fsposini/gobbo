@@ -103,6 +103,15 @@ def data_da_nome(p: Path) -> str:
 # --------------------------------------------------------------------------
 # 1-2. indice dei copioni
 # --------------------------------------------------------------------------
+def controlla_nojekyll() -> None:
+    """Senza questo file GitHub Pages passa tutto per Jekyll, che trasforma i
+    copioni da .md a .html e li rende irraggiungibili per l'app."""
+    f = BASE / ".nojekyll"
+    if not f.exists():
+        f.write_text("Pubblica i file così come sono: niente Jekyll.\n", encoding="utf-8", newline="\n")
+        print("  [!] Mancava .nojekyll, l'ho rimesso: senza, i copioni non si aprono.")
+
+
 def costruisci_indice() -> list[dict]:
     CARTELLA_SCRIPT.mkdir(exist_ok=True)
     voci = []
@@ -295,6 +304,7 @@ def repo_pronto() -> bool:
 def main() -> int:
     print("Gobbo — pubblicazione\n")
 
+    controlla_nojekyll()
     print("Copioni in scripts\\:")
     voci = costruisci_indice()
     if not voci:
