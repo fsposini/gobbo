@@ -1,0 +1,150 @@
+# Gobbo — copioni scorrevoli per i reel
+
+App web (PWA) che mostra sul telefono il testo di un reel mentre ti riprendi con la
+fotocamera frontale. I copioni si scrivono sul PC, si pubblicano con un doppio clic
+e compaiono sul telefono.
+
+---
+
+## Come si usa, in due passi
+
+**Sul PC** — metti un file `.md` nella cartella `scripts\` e lancia `PUBBLICA.bat`.
+
+**Sul telefono** — apri l'app, tocca «Aggiorna copioni», scegli il copione, premi il
+pulsante rosso. Parte un conto alla rovescia di tre secondi, poi il testo scorre e la
+registrazione parte insieme.
+
+Alla fine tocca «Salva nel rullino»: iOS apre il pannello di condivisione, scegli
+*Salva video* e il file finisce in Foto, pronto per Instagram.
+
+### La prima volta
+
+Nessun login da fare. `PUBBLICA.bat` riusa l'accesso a GitHub che il Gestore credenziali
+di Windows tiene già per pubblicare il Respiro Pacer.
+
+Al primo avvio si ferma e chiede il permesso di creare il repository pubblico `gobbo`:
+rispondi `s` e Invio. Crea il repository, invia i file, accende GitHub Pages e stampa
+l'indirizzo. Quello va aperto in **Safari** sul telefono.
+
+Se un giorno dicesse che l'accesso non è più valido: doppio clic su
+`RINNOVA ACCESSO GITHUB.bat`, nella stessa cartella. Ti apre GitHub nel browser, accedi,
+e torni a lanciare `PUBBLICA.bat`. Se l'accesso invece funziona già, quel programma te lo
+dice e non tocca niente: puoi lanciarlo senza rischi anche solo per controllare.
+
+---
+
+## Come si scrive un copione
+
+Un file di testo normale, con estensione `.md`, dentro `scripts\`.
+Nome consigliato: `AAAA-MM-GG-argomento.md` — la data all'inizio serve a tenere i più
+recenti in cima all'elenco.
+
+```markdown
+---
+titolo: Il tuo smartwatch non misura lo stress
+formato: polarizzante
+---
+
+> Sorriso, poi parti. Inquadratura stretta.
+
+Il tuo orologio ti dice che oggi sei stressato.
+
+Quel numero non misura lo stress. Misura la variabilità fra un battito e l'altro.
+
+---
+
+Sono due cose diverse, e la differenza conta.
+
+Il dato da solo non decide niente. **Decide il contesto.**
+```
+
+Cosa fa ogni pezzo:
+
+| Nel file | Sullo schermo |
+|---|---|
+| `titolo:` e `formato:` in cima, fra le due righe di trattini | Titolo e etichetta nell'elenco. Se manca il titolo lo ricava dal nome del file |
+| Riga vuota fra un blocco e l'altro | Separa i paragrafi |
+| `> testo` | **Nota di regia**: appare piccola e in rame, non si legge ad alta voce |
+| `---` da solo su una riga | Riga tratteggiata: uno stacco, il punto dove prendere fiato |
+| `**parola**` | Parola in evidenza, colore rame |
+| `# titolo` | Come una nota di regia: etichetta di sezione, non si legge |
+
+Le note di regia e gli stacchi **non vengono contati** nella stima della durata: il conteggio
+parole considera solo quello che dirai davvero.
+
+### Chiedere il copione a Claude Code o a ChatGPT
+
+> Scrivimi un copione per un reel da 50 secondi sul tema *[argomento]*, formato
+> *polarizzante*, nel formato Gobbo: frontmatter con `titolo` e `formato`, paragrafi corti
+> separati da riga vuota, note di regia con `>`, stacchi con `---`, parole chiave con `**`.
+> Circa 115 parole, che a 140 parole al minuto fanno 50 secondi.
+
+Il file va salvato in `C:\Users\Federico\Code\gobbo-app\scripts\`.
+Con Claude Code basta chiederglielo: conosce già la cartella e il formato.
+
+---
+
+## Le impostazioni
+
+- **Velocità** — parole al minuto. 140 è un parlato naturale. La stima di durata
+  nell'elenco si aggiorna con questo valore. Si cambia anche mentre giri, con `−` e `+`.
+- **Dimensione** — corpo del testo. Non cambia la durata: la velocità di scorrimento si
+  adegua da sola per mantenere le parole al minuto impostate.
+- **Altezza lettura** — dove sta la riga che stai leggendo, segnata dalle due frecce.
+  Più in alto è, più il tuo sguardo resta vicino all'obiettivo. Sull'iPhone 14 Pro
+  l'obiettivo è dentro la Dynamic Island, in cima allo schermo.
+- **Specchia anteprima** — ti vedi come allo specchio. Non tocca il video registrato,
+  che esce sempre nel verso giusto.
+- **Modalità solo testo** — spegne fotocamera e registrazione. Serve quando giri col
+  telefono principale e usi questo dispositivo come secondo schermo.
+
+Toccare in mezzo allo schermo mette in pausa e riprende lo scorrimento.
+
+---
+
+## Installare l'app sul telefono
+
+1. Apri l'indirizzo in **Safari** (non Chrome: solo Safari installa le PWA su iOS)
+2. Tocca il pulsante Condividi, poi **Aggiungi a Home**
+3. Aprila dall'icona blu sulla schermata Home
+
+Alla prima registrazione iOS chiede il permesso per fotocamera e microfono: vanno
+concessi entrambi. Se li neghi per sbaglio si riabilitano in
+*Impostazioni → Safari → Fotocamera / Microfono*.
+
+Lo schermo resta acceso mentre il gobbo è aperto.
+
+---
+
+## Qualità del video
+
+L'app chiede 1080×1920 a 30 fps in H.264 — la risoluzione nativa dei Reel. Quello che
+la fotocamera concede davvero è scritto in alto a destra durante la ripresa: quel numero
+è misurato, non stimato.
+
+Rispetto all'app Fotocamera di iOS manca l'elaborazione dell'immagine (Smart HDR,
+stabilizzazione piena). In buona luce la differenza si nota poco, in penombra si nota.
+Se non convince: attiva «Modalità solo testo», usa questo telefono come gobbo e gira
+con un secondo dispositivo.
+
+---
+
+## I file del progetto
+
+| File | A cosa serve |
+|---|---|
+| `index.html` | Tutta l'app: elenco, impostazioni, gobbo, registrazione |
+| `sw.js` | Fa funzionare l'app anche senza rete |
+| `manifest.webmanifest` | Nome e icone quando la installi sulla Home |
+| `scripts\*.md` | I copioni |
+| `scripts\index.json` | L'elenco che legge l'app — **generato, non si scrive a mano** |
+| `PUBBLICA.bat` | Il passo unico: aggiorna l'elenco, alza la versione, invia a GitHub |
+| `pubblica.py` | Il programma dietro al .bat |
+| `crea_icone.py` | Rigenera le icone, solo se cambia il disegno |
+
+### Nota tecnica sul rilascio
+
+Il numero di versione compare in due punti — `const VERSIONE` in `index.html` e
+`const CACHE` in `sw.js` — e i due **devono coincidere**, altrimenti il telefono continua
+a mostrare la copia vecchia. `pubblica.py` li allinea da solo quando vede che l'app è
+cambiata: non vanno toccati a mano.
