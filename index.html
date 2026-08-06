@@ -152,6 +152,11 @@
   }
   .pillola.rec{color:#FF6B6B}
   .pillola.rec::before{content:"● "}
+  .pillola.azione{color:#F0C9B8}
+  .pillola.azione:active{background:rgba(11,18,32,.88)}
+  .pillola.ascolto{color:#F0C9B8}
+  .pillola.ascolto::before{content:"◍ "}
+  .messaggio .bottone{display:block;width:100%;text-align:center}
   .tondo{
     width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
     background:rgba(11,18,32,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
@@ -241,9 +246,16 @@
 
         <div class="riga">
           <label for="impCorpo">Dimensione</label>
-          <input type="range" id="impCorpo" min="20" max="56" step="1">
+          <input type="range" id="impCorpo" min="20" max="72" step="1">
           <span class="valore" id="valCorpo">34 px</span>
         </div>
+        <div class="aiuto">34 px d&agrave; quattro o cinque parole per riga: l'occhio le prende quasi senza spostarsi e lo sguardo resta verso l'obiettivo. Va bene col telefono a mezzo metro; a un metro sali verso 55.</div>
+
+        <div class="riga">
+          <label for="impAscolto">Pausa quando smetti di parlare</label>
+          <span class="switch"><input type="checkbox" id="impAscolto"><span></span></span>
+        </div>
+        <div class="aiuto">Il testo si ferma se resti in silenzio per un paio di secondi e riparte quando riprendi. Ascolta solo il volume, non le parole: niente esce dal telefono. La registrazione non si ferma mai, va avanti anche mentre il testo aspetta.</div>
 
         <div class="riga">
           <label for="impBanda">Altezza lettura</label>
@@ -283,7 +295,9 @@
 
     <header class="hud">
       <button class="tondo" id="btnEsci" aria-label="Chiudi">✕</button>
+      <button class="pillola azione" id="btnProva">Tara il ritmo</button>
       <span class="cresci"></span>
+      <span class="pillola" id="pillolaAscolto" style="display:none">non ti sento</span>
       <span class="pillola" id="pillolaRisoluzione">…</span>
       <span class="pillola rec" id="pillolaTempo" style="display:none">0:00</span>
     </header>
@@ -292,6 +306,7 @@
       <button class="tasto" id="btnPiuLento">−</button>
       <button class="tasto largo" id="btnScorri">Avvia</button>
       <button class="rec-tasto" id="btnRec" aria-label="Registra"></button>
+      <button class="tasto largo" id="btnFineProva" style="display:none">Fine, ho letto tutto</button>
       <button class="tasto" id="btnDaCapo">↺</button>
       <button class="tasto" id="btnPiuVeloce">+</button>
     </footer>
@@ -303,6 +318,15 @@
         <h2 id="messaggioTitolo"></h2>
         <p id="messaggioTesto"></p>
         <button class="bottone" id="messaggioAzione">Continua senza fotocamera</button>
+      </div>
+    </div>
+
+    <div class="messaggio" id="taratura" style="display:none">
+      <div>
+        <h2 id="tarTitolo">Il tuo ritmo</h2>
+        <p id="tarTesto"></p>
+        <button class="bottone" id="tarAccetta">Usa questo ritmo</button>
+        <button class="bottone" id="tarRifiuta" style="background:rgba(255,255,255,.12);margin-top:10px">Lascia com'era</button>
       </div>
     </div>
 
@@ -321,13 +345,17 @@
 <script>
 "use strict";
 
-const VERSIONE = "v1";
+const VERSIONE = "v2";
 document.getElementById("etichettaVersione").textContent = VERSIONE;
 
 /* =========================================================
    Impostazioni persistenti
    ========================================================= */
-const PREDEFINITE = { velocita:140, corpo:34, banda:22, specchio:true, soloTesto:false };
+const PREDEFINITE = { velocita:140, corpo:34, banda:22, specchio:true, soloTesto:false, ascolto:true };
+
+// quanto silenzio prima di fermare il testo, e dopo quanto l'ascolto si arrende
+const SILENZIO_MS = 1500;
+const RESA_MS = 8000;
 let cfg = Object.assign({}, PREDEFINITE);
 try {
   const salvate = JSON.parse(localStorage.getItem("gobbo.cfg") || "{}");
@@ -462,7 +490,8 @@ const campi = {
   corpo:    document.getElementById("impCorpo"),
   banda:    document.getElementById("impBanda"),
   specchio: document.getElementById("impSpecchio"),
-  soloTesto:document.getElementById("impSoloTesto")
+  soloTesto:document.getElementById("impSoloTesto"),
+  ascolto:  document.getElementById("impAscolto")
 };
 const valori = {
   velocita: document.getElementById("valVelocita"),
@@ -476,6 +505,7 @@ function riflettiCfg(){
   campi.banda.value     = cfg.banda;
   campi.specchio.checked  = cfg.specchio;
   campi.soloTesto.checked = cfg.soloTesto;
+  campi.ascolto.checked   = cfg.ascolto;
   valori.velocita.textContent = cfg.velocita + " ppm";
   valori.corpo.textContent    = cfg.corpo + " px";
   valori.banda.textContent    = cfg.banda + "%";
@@ -487,6 +517,7 @@ campi.corpo.addEventListener("input",    e => { cfg.corpo    = +e.target.value; 
 campi.banda.addEventListener("input",    e => { cfg.banda    = +e.target.value; valori.banda.textContent    = cfg.banda + "%";      salvaCfg(); applicaStile(); });
 campi.specchio.addEventListener("change",  e => { cfg.specchio  = e.target.checked; salvaCfg(); applicaStile(); });
 campi.soloTesto.addEventListener("change", e => { cfg.soloTesto = e.target.checked; salvaCfg(); });
+campi.ascolto.addEventListener("change",   e => { cfg.ascolto   = e.target.checked; salvaCfg(); });
 
 document.getElementById("btnImpostazioni").addEventListener("click", () => {
   const visibile = pannello.style.display !== "none";
@@ -516,6 +547,13 @@ let stream = null, recorder = null, pezziVideo = [], wakeLock = null;
 let scorre = false, posizione = 0, ultimoFrame = 0, animazione = 0;
 let altezzaTesto = 0, paroleCopione = 0, avvioRec = 0, timerRec = 0;
 let modalitaCamera = true;
+
+// ascolto del microfono: ferma il testo quando smetti di parlare
+let audioCtx = null, analizzatore = null, campioni = null;
+let autoFermo = false, ultimoSuono = 0, pavimento = 1, inizioAutoFermo = 0, ascoltoArreso = false;
+
+// taratura del ritmo di lettura
+let inProva = false, avvioProva = 0;
 
 function mostraSchermata(nome){
   schermate.forEach(s => s.classList.toggle("attiva", s.dataset.screen === nome));
@@ -550,28 +588,112 @@ function disegna(){
   testoEl.style.transform = "translateY(" + (-posizione) + "px)";
 }
 
+/* ---------- ascolto del microfono ----------
+   Misura solo il volume dell'audio che la fotocamera sta già catturando: nessuna
+   parola viene riconosciuta e niente lascia il telefono. Serve a capire se stai
+   parlando, non che cosa stai dicendo. */
+function preparaAscolto(){
+  if (!stream || analizzatore) return;
+  if (!stream.getAudioTracks().length) return;
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new Ctx();
+    const sorgente = audioCtx.createMediaStreamSource(stream);
+    analizzatore = audioCtx.createAnalyser();
+    analizzatore.fftSize = 1024;
+    sorgente.connect(analizzatore);          // non collegato all'uscita: nessun ritorno audio
+    campioni = new Uint8Array(analizzatore.fftSize);
+  } catch (e) {
+    analizzatore = null;                     // senza ascolto il gobbo funziona lo stesso
+  }
+}
+
+function volume(){
+  if (!analizzatore) return null;
+  analizzatore.getByteTimeDomainData(campioni);
+  let somma = 0;
+  for (let i = 0; i < campioni.length; i++){
+    const v = (campioni[i] - 128) / 128;
+    somma += v * v;
+  }
+  return Math.sqrt(somma / campioni.length);
+}
+
+function azzeraAscolto(){
+  autoFermo = false; ascoltoArreso = false;
+  pavimento = 1; ultimoSuono = performance.now(); inizioAutoFermo = 0;
+  mostraStatoAscolto();
+}
+
+function ascoltoAttivo(){
+  return cfg.ascolto && analizzatore && !ascoltoArreso && modalitaCamera;
+}
+
+function valutaAscolto(ts){
+  if (!ascoltoAttivo()){ autoFermo = false; return; }
+  const rms = volume();
+  if (rms === null){ autoFermo = false; return; }
+
+  // il rumore di fondo si impara in fretta e si dimentica piano
+  if (rms < pavimento) pavimento = rms;
+  else pavimento += (rms - pavimento) * 0.0004;
+  const soglia = Math.max(pavimento * 3, 0.010);
+
+  if (rms > soglia) ultimoSuono = ts;
+
+  const zitto = ts - ultimoSuono > SILENZIO_MS;
+  if (zitto && !autoFermo){ autoFermo = true; inizioAutoFermo = ts; mostraStatoAscolto(); }
+  else if (!zitto && autoFermo){ autoFermo = false; mostraStatoAscolto(); }
+
+  // se resta fermo troppo a lungo il microfono non sta capendo: si arrende
+  // invece di rovinare la ripresa tenendo il testo bloccato
+  if (autoFermo && ts - inizioAutoFermo > RESA_MS){
+    ascoltoArreso = true; autoFermo = false; mostraStatoAscolto();
+  }
+}
+
+function mostraStatoAscolto(){
+  const p = document.getElementById("pillolaAscolto");
+  if (ascoltoArreso){
+    p.textContent = "ascolto spento"; p.className = "pillola"; p.style.display = "";
+  } else if (autoFermo){
+    p.textContent = "non ti sento"; p.className = "pillola ascolto"; p.style.display = "";
+  } else {
+    p.style.display = "none";
+  }
+}
+
+/* ---------- scorrimento ---------- */
 function ciclo(ts){
-  if (!scorre) return;
+  if (!scorre){ animazione = 0; return; }
   if (!ultimoFrame) ultimoFrame = ts;
   const dt = Math.min((ts - ultimoFrame) / 1000, 0.1);
   ultimoFrame = ts;
-  posizione += pxAlSecondo() * dt;
-  // si ferma quando l'ultima riga ha superato la banda di lettura, non prima e non molto dopo
-  const massimo = altezzaTesto + window.innerHeight * 0.05;
-  if (posizione >= massimo){ posizione = massimo; fermaScorrimento(); }
-  disegna();
+
+  valutaAscolto(ts);
+  if (!autoFermo){
+    posizione += pxAlSecondo() * dt;
+    // si ferma quando l'ultima riga ha superato la banda di lettura, non prima e non molto dopo
+    const massimo = altezzaTesto + window.innerHeight * 0.05;
+    if (posizione >= massimo){ posizione = massimo; fermaScorrimento(); return; }
+    disegna();
+  }
   animazione = requestAnimationFrame(ciclo);
 }
 
 function avviaScorrimento(){
   if (scorre) return;
   scorre = true; ultimoFrame = 0;
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+  ultimoSuono = performance.now();
   btnScorri.textContent = "Pausa";
   animazione = requestAnimationFrame(ciclo);
 }
 function fermaScorrimento(){
   scorre = false;
-  cancelAnimationFrame(animazione);
+  if (animazione) cancelAnimationFrame(animazione);
+  animazione = 0;
+  autoFermo = false; mostraStatoAscolto();
   btnScorri.textContent = "Avvia";
 }
 function daCapo(){
@@ -586,6 +708,91 @@ document.getElementById("btnPiuLento").addEventListener("click", () => {
 });
 document.getElementById("btnPiuVeloce").addEventListener("click", () => {
   cfg.velocita = Math.min(210, cfg.velocita + 10); salvaCfg(); riflettiCfg(); lampeggiaVelocita();
+});
+
+/* ---------- taratura del ritmo ----------
+   Non serve indovinare le parole al minuto: si legge il copione una volta a voce
+   alta senza registrare, e il tempo impiegato diventa la velocità di scorrimento. */
+const btnProva     = document.getElementById("btnProva");
+const btnFineProva = document.getElementById("btnFineProva");
+const tarPannello  = document.getElementById("taratura");
+
+/* La barra in alto è stretta: al massimo due pillole per volta, altrimenti la
+   risoluzione finisce fuori schermo. Si mostra quello che serve in quel momento. */
+function sistemaHud(){
+  const registra = !!(recorder && recorder.state === "recording");
+  btnProva.style.display     = (inProva || registra) ? "none" : "";
+  btnRec.style.display       = (inProva || !modalitaCamera) ? "none" : "";
+  btnFineProva.style.display = inProva ? "" : "none";
+  pillRis.style.display      = (inProva || registra) ? "none" : "";
+  mostraStatoAscolto();
+}
+
+btnProva.addEventListener("click", () => {
+  if (inProva) return;
+  daCapo();
+  fermaScorrimento();
+  azzeraAscolto();
+  contoAllaRovescia(() => {
+    inProva = true;
+    sistemaHud();
+    avvioProva = Date.now();
+    pillTempo.className = "pillola";
+    pillTempo.style.display = "";
+    pillTempo.textContent = "prova 0:00";
+    timerRec = setInterval(() => {
+      const s = Math.floor((Date.now() - avvioProva) / 1000);
+      pillTempo.textContent = "prova " + Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
+    }, 250);
+    avviaScorrimento();
+  });
+});
+
+btnFineProva.addEventListener("click", () => {
+  const secondi = (Date.now() - avvioProva) / 1000;
+  inProva = false;
+  fermaScorrimento();
+  clearInterval(timerRec);
+  pillTempo.style.display = "none";
+  pillTempo.className = "pillola rec";
+  sistemaHud();
+
+  if (secondi < 5){
+    document.getElementById("tarTitolo").textContent = "Troppo poco";
+    document.getElementById("tarTesto").textContent =
+      "La prova è durata meno di cinque secondi: non basta per misurare niente. " +
+      "Rifalla leggendo il copione fino in fondo, poi tocca «Fine».";
+    document.getElementById("tarAccetta").style.display = "none";
+    tarPannello.style.display = "grid";
+    return;
+  }
+
+  const misurato = paroleCopione / secondi * 60;
+  const proposto = Math.min(210, Math.max(80, Math.round(misurato / 5) * 5));
+  tarPannello.dataset.proposto = proposto;
+
+  let testo = "Hai letto " + paroleCopione + " parole in " + Math.round(secondi) +
+              " secondi: il tuo ritmo è " + Math.round(misurato) + " parole al minuto.";
+  if (proposto !== Math.round(misurato / 5) * 5){
+    testo += " È fuori dalla scala del cursore, quindi imposto " + proposto +
+             ", il valore più vicino possibile.";
+  }
+  document.getElementById("tarTitolo").textContent = "Il tuo ritmo";
+  document.getElementById("tarTesto").textContent = testo;
+  document.getElementById("tarAccetta").style.display = "";
+  document.getElementById("tarAccetta").textContent = "Usa " + proposto + " parole al minuto";
+  tarPannello.style.display = "grid";
+});
+
+document.getElementById("tarAccetta").addEventListener("click", () => {
+  const p = parseInt(tarPannello.dataset.proposto, 10);
+  if (p){ cfg.velocita = p; salvaCfg(); riflettiCfg(); }
+  tarPannello.style.display = "none";
+  daCapo();
+});
+document.getElementById("tarRifiuta").addEventListener("click", () => {
+  tarPannello.style.display = "none";
+  daCapo();
 });
 
 let timeoutVel = 0;
@@ -619,6 +826,8 @@ async function apriCopione(voce){
   mostraSchermata("gobbo");
   posizione = 0;
   fermaScorrimento();
+  inProva = false;
+  sistemaHud();
   applicaStile();
   await tieniSchermoAcceso();
 
@@ -660,6 +869,8 @@ async function accendiCamera(){
   videoEl.srcObject = stream;
   try { await videoEl.play(); } catch (e) {}
   aggiornaRisoluzione();
+  preparaAscolto();
+  azzeraAscolto();
 }
 
 function aggiornaRisoluzione(){
@@ -677,6 +888,8 @@ function aggiornaRisoluzione(){
 function spegniCamera(){
   if (stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
   videoEl.srcObject = null;
+  if (audioCtx){ audioCtx.close().catch(() => {}); audioCtx = null; }
+  analizzatore = null;
 }
 
 async function tieniSchermoAcceso(){
@@ -727,9 +940,7 @@ btnRec.addEventListener("click", () => {
   else avviaConConteggio();
 });
 
-function avviaConConteggio(){
-  if (!stream){ mostraMessaggio("Nessuna fotocamera", "Senza fotocamera non posso registrare. Usa la modalità solo testo e riprendi con un altro dispositivo."); return; }
-  daCapo();
+function contoAllaRovescia(poi){
   let n = 3;
   contoEl.textContent = n;
   contoEl.style.display = "grid";
@@ -738,8 +949,15 @@ function avviaConConteggio(){
     if (n > 0){ contoEl.textContent = n; return; }
     clearInterval(t);
     contoEl.style.display = "none";
-    avviaRegistrazione();
+    poi();
   }, 900);
+}
+
+function avviaConConteggio(){
+  if (!stream){ mostraMessaggio("Nessuna fotocamera", "Senza fotocamera non posso registrare. Usa la modalità solo testo e riprendi con un altro dispositivo."); return; }
+  daCapo();
+  azzeraAscolto();
+  contoAllaRovescia(avviaRegistrazione);
 }
 
 function avviaRegistrazione(){
@@ -766,6 +984,7 @@ function avviaRegistrazione(){
   }, 250);
 
   btnRec.classList.add("stop");
+  sistemaHud();
   avviaScorrimento();
 }
 
@@ -775,6 +994,7 @@ function fermaRegistrazione(){
   clearInterval(timerRec);
   btnRec.classList.remove("stop");
   pillTempo.style.display = "none";
+  sistemaHud();
 }
 
 let urlEsito = null;
@@ -823,11 +1043,16 @@ document.getElementById("btnRifai").addEventListener("click", () => {
 /* ---------- uscita ---------- */
 document.getElementById("btnEsci").addEventListener("click", async () => {
   fermaRegistrazione();
+  inProva = false;
+  clearInterval(timerRec);
+  pillTempo.style.display = "none";
+  pillTempo.className = "pillola rec";
   fermaScorrimento();
   spegniCamera();
   await rilasciaSchermo();
   esitoEl.style.display = "none";
   messaggioEl.style.display = "none";
+  tarPannello.style.display = "none";
   mostraSchermata("lista");
   caricaElenco(false);
 });

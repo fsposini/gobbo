@@ -84,12 +84,52 @@ Con Claude Code basta chiederglielo: conosce già la cartella e il formato.
 
 ---
 
+## Far combaciare la velocità con la tua voce
+
+Due cose lavorano insieme. La prima si fa una volta, la seconda da sola.
+
+### Tarare il ritmo (una volta, all'inizio)
+
+In alto a sinistra, accanto alla ✕, c'è **«Tara il ritmo»**. Toccalo: parte un conto alla
+rovescia di tre secondi, poi il testo scorre e tu **leggi il copione ad alta voce al tuo
+passo naturale**, senza rincorrerlo. Non sta registrando niente: è una prova.
+
+Quando arrivi all'ultima parola tocca **«Fine, ho letto tutto»**. L'app divide le parole
+per il tempo che ci hai messo e ti dice il tuo ritmo reale — *«hai letto 118 parole in 54
+secondi: il tuo ritmo è 131 parole al minuto»* — e te lo propone. Accetti e da lì in poi il
+testo scorre alla tua velocità, non a una velocità inventata.
+
+Il passo di lettura di una persona è abbastanza costante: lo misuri una volta e vale per
+tutti i copioni. Se la prima prova viene storta perché il testo scorreva troppo diverso dal
+tuo passo, rifalla: la seconda è già allineata.
+
+### La pausa quando smetti di parlare (automatica)
+
+Se ti fermi — cerchi la frase, ti inceppi, prendi fiato — dopo un paio di secondi il testo
+si ferma e in alto compare **«non ti sento»**. Appena riprendi a parlare riparte da solo.
+
+Serve a non farti scappare via il copione mentre pensi. **La registrazione non si ferma
+mai**: il video continua, si ferma solo il testo, così tagli dopo con calma.
+
+L'app misura soltanto il volume del microfono che sta già usando per registrare: non
+riconosce le parole, non chiede permessi in più e non manda niente fuori dal telefono.
+
+Se per qualche motivo il microfono non capisce e il testo resta bloccato più di otto
+secondi, l'ascolto **si spegne da solo** e il testo riparte: la pillola diventa «ascolto
+spento». È una rete di sicurezza perché una ripresa non si rovini. Puoi disattivare del
+tutto la funzione dalle impostazioni.
+
+---
+
 ## Le impostazioni
 
-- **Velocità** — parole al minuto. 140 è un parlato naturale. La stima di durata
-  nell'elenco si aggiorna con questo valore. Si cambia anche mentre giri, con `−` e `+`.
+- **Velocità** — parole al minuto. 140 è un parlato naturale, ma conviene lasciarla
+  decidere alla taratura qui sopra. Si cambia anche mentre giri, con `−` e `+`.
 - **Dimensione** — corpo del testo. Non cambia la durata: la velocità di scorrimento si
-  adegua da sola per mantenere le parole al minuto impostate.
+  adegua da sola per mantenere le parole al minuto impostate. A 34 px vedi quattro o cinque
+  parole per riga, la misura in cui l'occhio legge senza spostarsi e lo sguardo resta verso
+  l'obiettivo. Va bene col telefono a mezzo metro; a un metro sali verso 55.
+- **Pausa quando smetti di parlare** — spiegata sopra. Si può spegnere.
 - **Altezza lettura** — dove sta la riga che stai leggendo, segnata dalle due frecce.
   Più in alto è, più il tuo sguardo resta vicino all'obiettivo. Sull'iPhone 14 Pro
   l'obiettivo è dentro la Dynamic Island, in cima allo schermo.
