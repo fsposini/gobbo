@@ -19,6 +19,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from datetime import date
@@ -301,6 +302,56 @@ def repo_pronto() -> bool:
     return True
 
 
+def scarica(indirizzo: str) -> tuple[int, str]:
+    try:
+        req = urllib.request.Request(indirizzo + "?t=" + str(int(time.time())),
+                                     headers={"User-Agent": "gobbo-pubblica"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return r.status, r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, ""
+    except Exception:
+        return 0, ""
+
+
+def pubblicazione_fallita(utente: str, token: str) -> bool:
+    """Guarda se l'ultima pubblicazione di GitHub è andata in errore."""
+    stato, dati = api("GET", f"/repos/{utente}/{NOME_REPO}/actions/runs?per_page=1", token)
+    corse = (dati or {}).get("workflow_runs") or []
+    return bool(corse) and corse[0].get("status") == "completed" \
+        and corse[0].get("conclusion") == "failure"
+
+
+def verifica_online(utente: str, token: str, versione: str) -> bool:
+    """Aspetta che il sito serva davvero la versione appena inviata.
+
+    Serve perché GitHub a volte costruisce il pacchetto e poi non riesce a
+    metterlo online ('Timeout reached, aborting!'): senza questo controllo il
+    programma direbbe «fatto» e sul telefono resterebbe la versione vecchia.
+    """
+    sito = f"https://{utente}.github.io/{NOME_REPO}"
+    print(f"\nControllo che il sito serva davvero la {versione}…")
+    riprovato = False
+    for giro in range(42):                                   # circa 7 minuti
+        codice, testo = scarica(sito + "/index.html")
+        if codice == 200 and f'const VERSIONE = "{versione}"' in testo:
+            print(f"  Confermato: online c'è la {versione}.")
+            return True
+        if not riprovato and pubblicazione_fallita(utente, token):
+            print("  GitHub ha fallito la pubblicazione. La rilancio una volta…")
+            api("POST", f"/repos/{utente}/{NOME_REPO}/pages/builds", token, {})
+            riprovato = True
+        if giro == 6:
+            print("  (ci sta mettendo più del solito, continuo ad aspettare)")
+        time.sleep(10)
+
+    print(f"  Il sito non serve ancora la {versione}.")
+    print("  I tuoi file sono al sicuro su GitHub: è la pubblicazione loro a essere lenta.")
+    print("  Rilancia PUBBLICA.bat fra qualche minuto e ricontrolla, oppure guarda qui:")
+    print(f"     https://github.com/{utente}/{NOME_REPO}/actions")
+    return False
+
+
 def main() -> int:
     print("Gobbo — pubblicazione\n")
 
@@ -316,7 +367,12 @@ def main() -> int:
     scrivi_indice(voci)
     print(f"\nScritto {INDICE.relative_to(BASE)}")
 
-    if not repo_pronto():
+    accesso = accesso_github()
+    if not accesso:
+        print("\nL'indice è aggiornato sul PC, ma non è stato pubblicato online.")
+        return 1
+    utente, token = accesso
+    if (not (BASE / ".git").exists() or not git("remote", controlla=False)) and not crea_repo(utente, token):
         print("\nL'indice è aggiornato sul PC, ma non è stato pubblicato online.")
         return 1
 
@@ -341,13 +397,14 @@ def main() -> int:
     else:
         print("\nNiente di nuovo da inviare: è già tutto online.")
 
-    origin = git("remote", "get-url", "origin", controlla=False)
-    m = re.search(r"github\.com[:/]([^/]+)/([^/.]+)", origin)
-    if m:
-        print(f"\nIndirizzo dell'app:  https://{m.group(1)}.github.io/{m.group(2)}/")
-        print("GitHub ci mette circa un minuto ad aggiornare la pagina.")
-    print("Sul telefono: apri l'app e tocca «Aggiorna copioni».")
-    return 0
+    versione = f"v{versione_attuale()}"
+    online = verifica_online(utente, token, versione)
+
+    print(f"\nIndirizzo dell'app:  https://{utente}.github.io/{NOME_REPO}/")
+    if online:
+        print(f"Sul telefono: tira giù la pagina per ricaricarla. In alto a destra")
+        print(f"deve comparire «{versione}». Poi tocca «Aggiorna copioni».")
+    return 0 if online else 1
 
 
 if __name__ == "__main__":
