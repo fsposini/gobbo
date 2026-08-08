@@ -352,7 +352,7 @@
 <script>
 "use strict";
 
-const VERSIONE = "v4";
+const VERSIONE = "v6";
 document.getElementById("etichettaVersione").textContent = VERSIONE;
 
 /* =========================================================
@@ -1092,7 +1092,9 @@ function concludiRegistrazione(){
   if (urlEsito) URL.revokeObjectURL(urlEsito);
   urlEsito = URL.createObjectURL(blob);
 
-  document.getElementById("esitoVideo").src = urlEsito;
+  const riquadro = document.getElementById("esitoVideo");
+  riquadro.src = urlEsito;
+  riquadro.load();      // senza questo Safari continua a mostrare la ripresa precedente
   document.getElementById("esitoDati").textContent =
     pillRis.textContent + " · " + durata + "s · " +
     (blob.size / 1048576).toFixed(1) + " MB · " + estensione.toUpperCase();
@@ -1119,9 +1121,27 @@ function concludiRegistrazione(){
   esitoEl.style.display = "block";
 }
 
-document.getElementById("btnRifai").addEventListener("click", () => {
+/* Butta via davvero la ripresa precedente. Non basta nascondere il riquadro:
+   su Safari l'elemento video tiene il filmato di prima finché non gli si toglie
+   la sorgente e non lo si ricarica, e te lo ritrovi sotto alla ripresa nuova. */
+function scartaEsito(){
+  const v = document.getElementById("esitoVideo");
+  try { v.pause(); } catch (e) {}
+  v.removeAttribute("src");
+  v.load();
+  if (urlEsito){ URL.revokeObjectURL(urlEsito); urlEsito = null; }
+  pezziVideo = [];
+  document.getElementById("esitoDati").textContent = "";
+  document.getElementById("btnScarica").removeAttribute("href");
+  document.getElementById("btnSalva").onclick = null;
   esitoEl.style.display = "none";
+}
+
+document.getElementById("btnRifai").addEventListener("click", () => {
+  scartaEsito();
   daCapo();
+  azzeraAscolto();
+  sistemaHud();
 });
 
 /* ---------- uscita ---------- */

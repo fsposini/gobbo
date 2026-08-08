@@ -1,6 +1,14 @@
 {
-  "aggiornato": "2026-08-06",
+  "aggiornato": "2026-08-08",
   "script": [
+    {
+      "file": "2026-08-06-se-pensi-che-il-burnout-sia-causato-da-troppo-lavo.md",
+      "titolo": "Se pensi che il burnout sia causato da troppo lavoro, stai",
+      "formato": "polarizzante",
+      "data": "06/08",
+      "parole": 271,
+      "incipit": "Se pensi che il burnout sia causato da troppo lavoro, stai guardando il problema dalla parte sbagliata."
+    },
     {
       "file": "2026-08-05-esempio-hrv-smartwatch.md",
       "titolo": "Il tuo smartwatch non misura lo stress",

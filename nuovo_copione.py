@@ -95,8 +95,14 @@ def main() -> int:
             print("Non ho creato niente.")
             return 1
 
+    # Il titolo si propone dalla prima riga, ma ripulita: gli asterischi del
+    # grassetto e la punteggiatura di coda finivano dentro al titolo.
     prima = next((r.strip() for r in testo.split("\n") if r.strip()), "copione")
-    titolo = chiedi(f"Titolo [{prima[:45]}]: ", prima[:60])
+    prima = re.sub(r"[*_`]+", "", prima).strip(" .:;,–—-")
+    if len(prima) > 60:
+        taglio = prima[:60].rsplit(" ", 1)[0]
+        prima = taglio or prima[:60]
+    titolo = chiedi(f"Titolo [{prima}]: ", prima)
 
     print("\nFormato: 1 polarizzante · 2 reazione · 3 yapping · 4 reel · Invio per nessuno")
     scelta = chiedi("Numero: ", "5")
