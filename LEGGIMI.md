@@ -4,11 +4,23 @@ App web (PWA) che mostra sul telefono il testo di un reel mentre ti riprendi con
 fotocamera frontale. I copioni si scrivono sul PC, si pubblicano con un doppio clic
 e compaiono sul telefono.
 
+**Indirizzo dell'app:** https://fsposini.github.io/gobbo/
+
+Va aperto in **Safari** (non Firefox: solo Safari installa le app sulla schermata Home
+e concede la fotocamera senza storie). Il codice QR per aprirlo dal telefono è il file
+`APRI SUL TELEFONO.png` in questa cartella: doppio clic e inquadralo.
+
 ---
 
 ## Come si usa, in due passi
 
-**Sul PC** — metti un file `.md` nella cartella `scripts\` e lancia `PUBBLICA.bat`.
+**Sul PC** — copia il testo del copione con Ctrl+C e lancia `NUOVO COPIONE.bat` (o la
+scheda «Nuovo copione per i reel» in Home Studio). In alternativa metti a mano un file
+`.md` in `scripts\` e lancia `PUBBLICA.bat`.
+
+`PUBBLICA.bat` non si limita a inviare: **controlla che il sito sia davvero aggiornato**
+e, se GitHub fallisce la pubblicazione, la rilancia da solo. Finisce solo quando l'indirizzo
+online serve la stessa versione che hai sul PC — così «fatto» vuol dire davvero fatto.
 
 **Sul telefono** — apri l'app, tocca «Aggiorna copioni», scegli il copione, premi il
 pulsante rosso. Parte un conto alla rovescia di tre secondi, poi il testo scorre e la
