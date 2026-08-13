@@ -294,6 +294,12 @@
         <div class="aiuto">Il video esce verticale, 1080&times;1920, la misura dei Reel. Lasciato a s&eacute; Safari registra coricato, perch&eacute; salva il flusso della fotocamera nel verso del sensore. Spegnilo solo se la ripresa dovesse uscire nera o non partire: si torna a registrare la fotocamera cos&igrave; com'&egrave;.</div>
 
         <div class="riga">
+          <label for="impCampoLargo">Campo largo</label>
+          <span class="switch"><input type="checkbox" id="impCampoLargo"><span></span></span>
+        </div>
+        <div class="aiuto">Chiede alla fotocamera il fotogramma pi&ugrave; largo che ha (4:3) invece di chiederle direttamente un 9:16, e il ritaglio lo fa l'app. Se l'inquadratura si allarga, iOS ti stava consegnando un'immagine gi&agrave; ingrandita. Se ti sembra identica, la fotocamera non ha altro da dare. Va spenta e riaccesa uscendo e riaprendo il copione.</div>
+
+        <div class="riga">
           <label for="impLeggera">Ripresa leggera</label>
           <span class="switch"><input type="checkbox" id="impLeggera"><span></span></span>
         </div>
@@ -382,13 +388,13 @@
 <script>
 "use strict";
 
-const VERSIONE = "v15";
+const VERSIONE = "v16";
 document.getElementById("etichettaVersione").textContent = VERSIONE;
 
 /* =========================================================
    Impostazioni persistenti
    ========================================================= */
-const PREDEFINITE = { velocita:140, corpo:34, banda:22, specchio:true, soloTesto:false, ascolto:true, verticale:true, leggera:false };
+const PREDEFINITE = { velocita:140, corpo:34, banda:22, specchio:true, soloTesto:false, ascolto:true, verticale:true, leggera:false, campoLargo:false };
 
 // quanto silenzio prima di fermare il testo, e dopo quanto l'ascolto si arrende
 const SILENZIO_MS = 1500;
@@ -555,7 +561,8 @@ const campi = {
   soloTesto:document.getElementById("impSoloTesto"),
   ascolto:  document.getElementById("impAscolto"),
   verticale:document.getElementById("impVerticale"),
-  leggera:  document.getElementById("impLeggera")
+  leggera:  document.getElementById("impLeggera"),
+  campoLargo:document.getElementById("impCampoLargo")
 };
 const valori = {
   velocita: document.getElementById("valVelocita"),
@@ -572,6 +579,7 @@ function riflettiCfg(){
   campi.ascolto.checked   = cfg.ascolto;
   campi.verticale.checked = cfg.verticale;
   campi.leggera.checked   = cfg.leggera;
+  campi.campoLargo.checked = cfg.campoLargo;
   valori.velocita.textContent = cfg.velocita + " ppm";
   valori.corpo.textContent    = cfg.corpo + " px";
   valori.banda.textContent    = cfg.banda + "%";
@@ -586,6 +594,7 @@ campi.soloTesto.addEventListener("change", e => { cfg.soloTesto = e.target.check
 campi.ascolto.addEventListener("change",   e => { cfg.ascolto   = e.target.checked; salvaCfg(); });
 campi.verticale.addEventListener("change", e => { cfg.verticale = e.target.checked; salvaCfg(); });
 campi.leggera.addEventListener("change",   e => { cfg.leggera   = e.target.checked; salvaCfg(); });
+campi.campoLargo.addEventListener("change",e => { cfg.campoLargo= e.target.checked; salvaCfg(); });
 
 document.getElementById("btnImpostazioni").addEventListener("click", () => {
   const visibile = pannello.style.display !== "none";
@@ -1054,13 +1063,16 @@ async function accendiCamera(){
   btnRec.style.display = "";
   pillRis.textContent = "avvio fotocamera…";
   try {
+    /* Chiedere 1080×1920 significa chiedere un 9:16 già fatto, e iOS può
+       consegnarlo come ritaglio stretto del sensore. Chiedendo un 4:3 si prende
+       il fotogramma più largo che la fotocamera ha e il taglio lo fa la tela:
+       se il campo si allarga, era iOS a stringere. */
     stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: "user",
-        width:  { ideal: 1080 },
-        height: { ideal: 1920 },
-        frameRate: { ideal: 30 }
-      },
+      video: cfg.campoLargo
+        ? { facingMode:"user", width:{ ideal:1440 }, height:{ ideal:1920 },
+            aspectRatio:{ ideal: 3/4 }, frameRate:{ ideal:30 } }
+        : { facingMode:"user", width:{ ideal:1080 }, height:{ ideal:1920 },
+            frameRate:{ ideal:30 } },
       audio: true
     });
   } catch (e) {
