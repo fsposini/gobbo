@@ -149,6 +149,9 @@ tutto la funzione dalle impostazioni.
   che esce sempre nel verso giusto.
 - **Video verticale 9:16** — il video esce a 1080×1920, la misura dei Reel. Spiegato
   sotto, in «Qualità del video». Lascialo acceso.
+- **Ripresa leggera** — scende a 720×1280 e a 4,5 Mbit/s. Serve solo se una ripresa
+  lunga non riesce: alleggerisce il lavoro del telefono. Da spenta il video si vede
+  meglio, quindi è il ripiego, non il modo normale di girare.
 - **Modalità solo testo** — spegne fotocamera e registrazione. Serve quando giri col
   telefono principale e usi questo dispositivo come secondo schermo.
 
@@ -242,7 +245,18 @@ avere il primo minuto che scoprire alla fine di non avere niente.
 Il video viene scritto a pezzi da un secondo, non tenuto tutto in memoria fino allo stop:
 è la ragione per cui prima le riprese lunghe fallivano mentre quelle corte riuscivano.
 Il flusso è a 8 Mbit/s — a occhio non si distingue da 12 su un 1080×1920, e Instagram
-ricomprime comunque intorno a 3,5.
+ricomprime comunque intorno a 3,5. Fanno circa **60 MB al minuto**.
+
+**Peso e risoluzione sono due manopole diverse**, e conviene non confonderle: il peso del
+file lo decide il bitrate, non i pixel. Scendere a 720 tenendo 8 Mbit/s darebbe un file
+identico e solo più morbido. Quello che la risoluzione riduce è il *lavoro* del telefono —
+meno pixel da ridisegnare e comprimere trenta volte al secondo, quindi meno calore. È
+questo che fa l'interruttore «Ripresa leggera», che infatti abbassa tutt'e due insieme
+(720×1280 a 4,5 Mbit/s, circa 34 MB al minuto).
+
+Non conviene girare leggeri per abitudine: Instagram ricomprime **partendo da quello che
+gli dai**, e comprimere una copia già povera rende peggio che comprimere una copia pulita.
+Su un primo piano parlato la differenza si vede nella pelle e nei contorni.
 
 ### Se il telefono resta indietro
 

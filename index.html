@@ -294,6 +294,12 @@
         <div class="aiuto">Il video esce verticale, 1080&times;1920, la misura dei Reel. Lasciato a s&eacute; Safari registra coricato, perch&eacute; salva il flusso della fotocamera nel verso del sensore. Spegnilo solo se la ripresa dovesse uscire nera o non partire: si torna a registrare la fotocamera cos&igrave; com'&egrave;.</div>
 
         <div class="riga">
+          <label for="impLeggera">Ripresa leggera</label>
+          <span class="switch"><input type="checkbox" id="impLeggera"><span></span></span>
+        </div>
+        <div class="aiuto">Scende a 720&times;1280 e circa met&agrave; dei dati al minuto: il telefono fatica meno e scalda meno nelle riprese lunghe. Accendila solo se una ripresa lunga non riesce. Il video esce pi&ugrave; morbido e Instagram parte da una copia peggiore, quindi da spenta si vede meglio.</div>
+
+        <div class="riga">
           <label for="impSoloTesto">Modalità solo testo</label>
           <span class="switch"><input type="checkbox" id="impSoloTesto"><span></span></span>
         </div>
@@ -376,13 +382,13 @@
 <script>
 "use strict";
 
-const VERSIONE = "v12";
+const VERSIONE = "v13";
 document.getElementById("etichettaVersione").textContent = VERSIONE;
 
 /* =========================================================
    Impostazioni persistenti
    ========================================================= */
-const PREDEFINITE = { velocita:140, corpo:34, banda:22, specchio:true, soloTesto:false, ascolto:true, verticale:true };
+const PREDEFINITE = { velocita:140, corpo:34, banda:22, specchio:true, soloTesto:false, ascolto:true, verticale:true, leggera:false };
 
 // quanto silenzio prima di fermare il testo, e dopo quanto l'ascolto si arrende
 const SILENZIO_MS = 1500;
@@ -548,7 +554,8 @@ const campi = {
   specchio: document.getElementById("impSpecchio"),
   soloTesto:document.getElementById("impSoloTesto"),
   ascolto:  document.getElementById("impAscolto"),
-  verticale:document.getElementById("impVerticale")
+  verticale:document.getElementById("impVerticale"),
+  leggera:  document.getElementById("impLeggera")
 };
 const valori = {
   velocita: document.getElementById("valVelocita"),
@@ -564,6 +571,7 @@ function riflettiCfg(){
   campi.soloTesto.checked = cfg.soloTesto;
   campi.ascolto.checked   = cfg.ascolto;
   campi.verticale.checked = cfg.verticale;
+  campi.leggera.checked   = cfg.leggera;
   valori.velocita.textContent = cfg.velocita + " ppm";
   valori.corpo.textContent    = cfg.corpo + " px";
   valori.banda.textContent    = cfg.banda + "%";
@@ -577,6 +585,7 @@ campi.specchio.addEventListener("change",  e => { cfg.specchio  = e.target.check
 campi.soloTesto.addEventListener("change", e => { cfg.soloTesto = e.target.checked; salvaCfg(); });
 campi.ascolto.addEventListener("change",   e => { cfg.ascolto   = e.target.checked; salvaCfg(); });
 campi.verticale.addEventListener("change", e => { cfg.verticale = e.target.checked; salvaCfg(); });
+campi.leggera.addEventListener("change",   e => { cfg.leggera   = e.target.checked; salvaCfg(); });
 
 document.getElementById("btnImpostazioni").addEventListener("click", () => {
   const visibile = pannello.style.display !== "none";
@@ -1150,7 +1159,10 @@ let misuraRipresa = "";
 function misureTela(){
   // la fotocamera può consegnare il fotogramma coricato: si guarda il lato corto
   const corto = Math.min(videoEl.videoWidth || 1080, videoEl.videoHeight || 1920);
-  const larghezza = Math.min(1080, corto || 1080);
+  // "leggera" alleggerisce il lavoro del telefono, non il peso del file: quello
+  // lo decide il bitrate, girato insieme a questo qui sotto
+  const tetto = cfg.leggera ? 720 : 1080;
+  const larghezza = Math.min(tetto, corto || tetto);
   const pari = n => Math.round(n / 2) * 2;        // H.264 vuole i lati pari
   return { l: pari(larghezza), a: pari(larghezza * 16 / 9) };
 }
@@ -1300,7 +1312,7 @@ function avviaRegistrazione(){
   /* 8 Mbit/s, non 12. Su 1080×1920 la differenza a occhio non si vede — Instagram
      ricomprime tutto intorno ai 3,5 — mentre sulla memoria si vede eccome: a 12
      una ripresa di due minuti e mezzo accumulava ~230 MB dentro la pagina. */
-  const opzioni = { videoBitsPerSecond: 8000000, audioBitsPerSecond: 128000 };
+  const opzioni = { videoBitsPerSecond: cfg.leggera ? 4500000 : 8000000, audioBitsPerSecond: 128000 };
   if (mime) opzioni.mimeType = mime;
 
   // la tela si usa solo se il collaudo l'ha promossa: mai su fiducia
