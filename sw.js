@@ -1,7 +1,7 @@
 /* Gobbo — service worker
    La versione della cache DEVE coincidere con VERSIONE in index.html.
    Le due righe le allinea da sole PUBBLICA.bat: non modificarle a mano. */
-const CACHE = "gobbo-v6";
+const CACHE = "gobbo-v7";
 
 const GUSCIO = [
   "./",

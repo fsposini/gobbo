@@ -150,7 +150,28 @@ tutto la funzione dalle impostazioni.
 - **Modalità solo testo** — spegne fotocamera e registrazione. Serve quando giri col
   telefono principale e usi questo dispositivo come secondo schermo.
 
-Toccare in mezzo allo schermo mette in pausa e riprende lo scorrimento.
+---
+
+## Muoversi nel testo
+
+Tre modi, dal più comodo al più preciso.
+
+**Trascinare col dito.** Appoggia il dito in mezzo allo schermo e tira: verso l'alto
+il testo va avanti, verso il basso torna indietro, come una pagina vera. Mentre
+trascini lo scorrimento automatico si mette da parte e ti lascia comandare; appena
+stacchi il dito riprende da dove l'hai lasciato. Funziona anche mentre stai registrando:
+se sbagli una frase torni sopra di due righe e la ridici, il video continua e tagli dopo.
+
+**I quattro tasti in basso** — `« 10″`, `‹ 5″`, `5″ ›`, `10″ »` — spostano il testo di
+cinque o dieci secondi di parlato. Non sono secondi di video: sono secondi *al tuo ritmo*,
+cioè quanto testo ti passa davanti in quel tempo. Se cambi la velocità cambia anche
+l'ampiezza del salto, ed è giusto così.
+
+**Un tocco secco** in mezzo allo schermo mette in pausa e riprende, come prima.
+Un tocco è un tocco solo se il dito non si sposta: se scivola diventa un trascinamento
+e lo scorrimento non si ferma.
+
+Il tasto `↺` riporta il testo all'inizio.
 
 ---
 

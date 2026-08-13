@@ -109,8 +109,8 @@
     --sfuma: linear-gradient(180deg,
       transparent 0,
       #000 calc(env(safe-area-inset-top) + 60px),
-      #000 calc(100% - env(safe-area-inset-bottom) - 168px),
-      transparent calc(100% - env(safe-area-inset-bottom) - 96px));
+      #000 calc(100% - env(safe-area-inset-bottom) - 212px),
+      transparent calc(100% - env(safe-area-inset-bottom) - 140px));
     -webkit-mask-image: var(--sfuma);
             mask-image: var(--sfuma);
   }
@@ -173,7 +173,8 @@
 
   .comandi{position:absolute;left:0;right:0;bottom:0;z-index:5;
     padding:12px 14px calc(env(safe-area-inset-bottom) + 14px);
-    display:flex;align-items:center;justify-content:center;gap:12px}
+    display:flex;flex-direction:column;align-items:center;gap:10px}
+  .comandi .fila{display:flex;align-items:center;justify-content:center;gap:12px;width:100%}
   .tasto{
     background:rgba(11,18,32,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     color:#fff;font-size:14px;font-weight:650;padding:12px 16px;border-radius:14px;min-width:52px;
@@ -181,6 +182,11 @@
   }
   .tasto:active{background:rgba(11,18,32,.88)}
   .tasto.largo{flex:1;max-width:170px}
+  /* salti avanti e indietro: pillole basse, non devono rubare spazio al testo */
+  .tasto.mini{
+    font-size:13px;font-weight:600;padding:7px 12px;border-radius:11px;min-width:0;
+    font-variant-numeric:tabular-nums;letter-spacing:.01em;white-space:nowrap;
+  }
   .rec-tasto{
     width:70px;height:70px;border-radius:50%;background:#FF453A;flex:0 0 auto;
     border:4px solid rgba(255,255,255,.9);display:grid;place-items:center;
@@ -195,7 +201,10 @@
   .velo.pieno ~ .comandi .tasto{background:rgba(255,255,255,.11)}
   .velo.pieno ~ .comandi .tasto:active{background:rgba(255,255,255,.22)}
 
-  .zona-tap{position:absolute;left:0;right:0;top:88px;bottom:110px;z-index:3}
+  /* touch-action:none serve a poter trascinare il testo senza che iOS interpreti
+     il gesto come uno scorrimento della pagina */
+  .zona-tap{position:absolute;left:0;right:0;top:88px;
+    bottom:calc(env(safe-area-inset-bottom) + 140px);z-index:3;touch-action:none}
 
   .conto{
     position:absolute;inset:0;z-index:10;display:grid;place-items:center;
@@ -310,12 +319,20 @@
     </header>
 
     <footer class="comandi">
-      <button class="tasto" id="btnPiuLento">−</button>
-      <button class="tasto largo" id="btnScorri">Avvia</button>
-      <button class="rec-tasto" id="btnRec" aria-label="Registra"></button>
-      <button class="tasto largo" id="btnFineProva" style="display:none">Fine, ho letto tutto</button>
-      <button class="tasto" id="btnDaCapo">↺</button>
-      <button class="tasto" id="btnPiuVeloce">+</button>
+      <div class="fila" id="salti">
+        <button class="tasto mini" id="btnGiu10" aria-label="Indietro dieci secondi">&laquo; 10&Prime;</button>
+        <button class="tasto mini" id="btnGiu5"  aria-label="Indietro cinque secondi">&lsaquo; 5&Prime;</button>
+        <button class="tasto mini" id="btnSu5"   aria-label="Avanti cinque secondi">5&Prime; &rsaquo;</button>
+        <button class="tasto mini" id="btnSu10"  aria-label="Avanti dieci secondi">10&Prime; &raquo;</button>
+      </div>
+      <div class="fila">
+        <button class="tasto" id="btnPiuLento">−</button>
+        <button class="tasto largo" id="btnScorri">Avvia</button>
+        <button class="rec-tasto" id="btnRec" aria-label="Registra"></button>
+        <button class="tasto largo" id="btnFineProva" style="display:none">Fine, ho letto tutto</button>
+        <button class="tasto" id="btnDaCapo">↺</button>
+        <button class="tasto" id="btnPiuVeloce">+</button>
+      </div>
     </footer>
 
     <div class="conto" id="conto" style="display:none">3</div>
@@ -352,7 +369,7 @@
 <script>
 "use strict";
 
-const VERSIONE = "v6";
+const VERSIONE = "v7";
 document.getElementById("etichettaVersione").textContent = VERSIONE;
 
 /* =========================================================
@@ -690,11 +707,10 @@ function ciclo(ts){
   ultimoFrame = ts;
 
   valutaAscolto(ts);
-  if (!autoFermo){
+  // mentre il dito trascina il testo, il tempo non lo muove: comanda la mano
+  if (!autoFermo && !trascinando()){
     posizione += pxAlSecondo() * dt;
-    // si ferma quando l'ultima riga ha superato la banda di lettura, non prima e non molto dopo
-    const massimo = altezzaTesto + window.innerHeight * 0.05;
-    if (posizione >= massimo){ posizione = massimo; fermaScorrimento(); return; }
+    if (posizione >= limiteScorrimento()){ posizione = limiteScorrimento(); fermaScorrimento(); return; }
     disegna();
   }
   animazione = requestAnimationFrame(ciclo);
@@ -719,9 +735,67 @@ function daCapo(){
   posizione = 0; disegna();
 }
 
+/* ---------- spostarsi nel testo ----------
+   Il gobbo non è un video: i «secondi» qui sono secondi di parlato al ritmo
+   impostato, cioè quanto testo passa davanti alla banda di lettura in quel tempo.
+   Se cambi la velocità cambia anche l'ampiezza del salto, ed è giusto così. */
+function limiteScorrimento(){
+  // fine corsa: quando l'ultima riga ha superato la banda di lettura
+  return altezzaTesto + window.innerHeight * 0.05;
+}
+
+function salta(secondi){
+  posizione = Math.max(0, Math.min(limiteScorrimento(), posizione + secondi * pxAlSecondo()));
+  disegna();
+}
+
+document.getElementById("btnGiu10").addEventListener("click", () => salta(-10));
+document.getElementById("btnGiu5").addEventListener("click",  () => salta(-5));
+document.getElementById("btnSu5").addEventListener("click",   () => salta(5));
+document.getElementById("btnSu10").addEventListener("click",  () => salta(10));
+
+/* Trascinamento col dito. Il testo segue la mano: si tira verso l'alto per andare
+   avanti, verso il basso per tornare indietro, come una pagina vera.
+   Un tocco senza spostamento resta quello che era prima: pausa e riprendi. */
+const zonaTap = document.getElementById("zonaTap");
+let trascino = null;
+
+function trascinando(){ return !!(trascino && trascino.mosso); }
+
+zonaTap.addEventListener("pointerdown", ev => {
+  if (inProva) return;                       // durante la taratura il testo deve stare fermo
+  trascino = { y: ev.clientY, base: posizione, mosso: false };
+  try { zonaTap.setPointerCapture(ev.pointerId); } catch (e) {}
+});
+
+zonaTap.addEventListener("pointermove", ev => {
+  if (!trascino) return;
+  if (!trascino.mosso){
+    // sotto i 6 px è la mano che trema su un tocco, non un trascinamento
+    if (Math.abs(ev.clientY - trascino.y) < 6) return;
+    trascino.mosso = true;
+    // il testo può essere andato avanti mentre il dito era appoggiato fermo:
+    // il punto di partenza è dove si trova adesso, altrimenti scatta all'indietro
+    trascino.y = ev.clientY;
+    trascino.base = posizione;
+  }
+  posizione = Math.max(0, Math.min(limiteScorrimento(), trascino.base - (ev.clientY - trascino.y)));
+  disegna();
+  ev.preventDefault();
+});
+
+function fineTrascino(ev){
+  if (!trascino) return;
+  const eraTocco = !trascino.mosso;
+  trascino = null;
+  try { zonaTap.releasePointerCapture(ev.pointerId); } catch (e) {}
+  if (eraTocco && !inProva) scorre ? fermaScorrimento() : avviaScorrimento();
+}
+zonaTap.addEventListener("pointerup", fineTrascino);
+zonaTap.addEventListener("pointercancel", () => { trascino = null; });
+
 btnScorri.addEventListener("click", () => scorre ? fermaScorrimento() : avviaScorrimento());
 document.getElementById("btnDaCapo").addEventListener("click", daCapo);
-document.getElementById("zonaTap").addEventListener("click", () => scorre ? fermaScorrimento() : avviaScorrimento());
 document.getElementById("btnPiuLento").addEventListener("click", () => {
   cfg.velocita = Math.max(80, cfg.velocita - 10); salvaCfg(); riflettiCfg(); lampeggiaVelocita();
 });
@@ -746,7 +820,7 @@ function sistemaHud(){
   pillRis.style.display      = (inProva || registra) ? "none" : "";
   // durante la taratura il testo sta fermo: i comandi di scorrimento
   // confonderebbero e basta
-  ["btnPiuLento","btnScorri","btnDaCapo","btnPiuVeloce"].forEach(id => {
+  ["btnPiuLento","btnScorri","btnDaCapo","btnPiuVeloce","salti"].forEach(id => {
     document.getElementById(id).style.display = inProva ? "none" : "";
   });
   mostraStatoAscolto();
@@ -762,7 +836,7 @@ function passaggioDiProva(){
   // dello schermo, così il passaggio da leggere è più lungo e la misura più solida.
   testoEl.style.paddingTop = "70px";
   const sopra  = 70;
-  const limite = window.innerHeight - 175;          // sopra la dissolvenza e i comandi
+  const limite = window.innerHeight - 219;          // sopra la dissolvenza e i comandi
   const scelti = [];
   testoEl.querySelectorAll("p.detto").forEach(p => {
     if (p.offsetTop >= sopra - 2 && p.offsetTop + p.offsetHeight <= limite) scelti.push(p);
