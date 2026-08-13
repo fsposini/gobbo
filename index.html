@@ -382,7 +382,7 @@
 <script>
 "use strict";
 
-const VERSIONE = "v14";
+const VERSIONE = "v15";
 document.getElementById("etichettaVersione").textContent = VERSIONE;
 
 /* =========================================================
@@ -1090,7 +1090,7 @@ async function accendiCamera(){
    che l'app Fotocamera usa per sé. Se il binario video espone la capacità "zoom", la
    si porta al minimo — cioè al più largo possibile. Non può stringere: se il minimo
    è già quello in uso non tocca niente. */
-let notaCampo = "";
+let notaCampo = "", notaRitaglio = "";
 
 async function allargaCampo(){
   notaCampo = "";
@@ -1208,6 +1208,18 @@ function creaStreamVerticale(){
   tela.width = m.l; tela.height = m.a;
   pennello = tela.getContext("2d", { alpha:false });
   if (!pennello){ tela = null; return null; }
+
+  /* Quanto della larghezza della sorgente finisce davvero nel video. È il numero
+     che dice se l'inquadratura stretta la produco io col ritaglio o se arriva già
+     stretta da iOS: «pista» è ciò che la fotocamera DICHIARA, questo è ciò che la
+     tela RICEVE, e su iOS le due cose non coincidono. */
+  const vl0 = videoEl.videoWidth, va0 = videoEl.videoHeight;
+  if (vl0 && va0){
+    const s0 = Math.max(m.l / vl0, m.a / va0);
+    notaRitaglio = "sorgente " + vl0 + "×" + va0 + " · ritaglio " + (vl0 * s0 / m.l).toFixed(2) + "×";
+  } else {
+    notaRitaglio = "sorgente non misurabile";
+  }
 
   ultimoDisegno = 0;
   const passo = ts => {
@@ -1344,7 +1356,8 @@ function avviaRegistrazione(){
   // la tela si usa solo se il collaudo l'ha promossa: mai su fiducia
   const sorgente = (telaCollaudata === true && creaStreamVerticale()) || stream;
   misuraRipresa = (sorgente !== stream && tela)
-    ? tela.width + "×" + tela.height + " verticale · " + datiPista
+    ? tela.width + "×" + tela.height + " verticale · " + datiPista +
+      (notaRitaglio ? " · " + notaRitaglio : "")
     : "coricato · " + datiPista;
 
   try {
