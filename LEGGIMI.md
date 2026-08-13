@@ -229,6 +229,31 @@ Due conseguenze da sapere:
 L'interruttore **«Video verticale 9:16»** nelle impostazioni la spegne. Va toccato solo
 se una ripresa dovesse uscire nera o non partire.
 
+### Le riprese lunghe
+
+Mentre registri, la pillola rossa in alto non mostra solo il tempo ma anche **quanti MB
+sono già stati salvati**: `1:23 · 11 MB`. È la prova che il video sta davvero arrivando su
+disco. Se quel numero cresce, sei tranquillo.
+
+Se per sei secondi non arriva un byte, l'app **si ferma da sola e tiene il pezzo buono**:
+il riquadro finale dice «Ripresa interrotta — ho salvato fin dove è arrivata». Meglio
+avere il primo minuto che scoprire alla fine di non avere niente.
+
+Il video viene scritto a pezzi da un secondo, non tenuto tutto in memoria fino allo stop:
+è la ragione per cui prima le riprese lunghe fallivano mentre quelle corte riuscivano.
+Il flusso è a 8 Mbit/s — a occhio non si distingue da 12 su un 1080×1920, e Instagram
+ricomprime comunque intorno a 3,5.
+
+### Se il telefono resta indietro
+
+Quando apri l'app, se online c'è una versione più recente di quella che stai usando
+compare un riquadro in cima all'elenco con scritto **«Sul telefono c'è la vXX, ma online
+c'è la vYY»** e un pulsante «Aggiorna adesso». Serve perché altrimenti si provano funzioni
+che sul telefono non esistono ancora, e sembrano rotte.
+
+Se il pulsante non basta: chiudi l'app **davvero** — scorri dal fondo dello schermo verso
+l'alto e tieni premuto, poi butta via la scheda di Gobbo — e riaprila dall'icona.
+
 ### Il resto
 
 L'app chiede alla fotocamera 1080×1920 a 30 fps in H.264. Quello che concede davvero è
