@@ -361,7 +361,7 @@
     </div>
 
     <div class="esito" id="esito" style="display:none">
-      <h2>Registrazione pronta</h2>
+      <h2 id="esitoTitolo">Registrazione pronta</h2>
       <p class="dati" id="esitoDati"></p>
       <video id="esitoVideo" controls playsinline></video>
       <button class="bottone" id="btnSalva">Salva nel rullino</button>
@@ -1038,7 +1038,18 @@ async function accendiCamera(){
   aggiornaRisoluzione();
   preparaAscolto();
   azzeraAscolto();
+
+  // il collaudo va fatto adesso, con calma, non all'inizio di una ripresa
+  pillRis.textContent = "controllo il verticale…";
+  await collaudaTela();
+  aggiornaRisoluzione();
 }
+
+/* Cosa la fotocamera consegna DAVVERO, nell'ordine in cui lo dichiara lei.
+   Va tenuto grezzo: se iOS annuncia 1920×1080 stiamo ricevendo un fotogramma
+   coricato, e quel numero è l'unico modo per saperlo. La pillola in alto lo
+   normalizza per leggibilità, questo no. */
+let pistaGrezza = "", datiPista = "";
 
 function aggiornaRisoluzione(){
   if (!stream) return;
@@ -1046,10 +1057,16 @@ function aggiornaRisoluzione(){
   if (!t) return;
   const s = t.getSettings ? t.getSettings() : {};
   if (!s.width || !s.height){ pillRis.textContent = "fotocamera attiva"; return; }
+  pistaGrezza = s.width + "×" + s.height;
   // in verticale iOS può riportare le dimensioni al contrario: mostro sempre L×A del video girato
   const l = Math.min(s.width, s.height), a = Math.max(s.width, s.height);
-  const fps = s.frameRate ? " · " + Math.round(s.frameRate) + " fps" : "";
-  pillRis.textContent = l + "×" + a + fps;
+  const fps = s.frameRate ? Math.round(s.frameRate) + " fps" : "";
+  datiPista = l + "×" + a + (fps ? " · " + fps : "") + " · pista " + pistaGrezza;
+
+  const verso = telaCollaudata === true  ? " · verticale"
+              : telaCollaudata === false ? " · coricato"
+              : "";
+  pillRis.textContent = l + "×" + a + verso;
 }
 
 function spegniCamera(){
@@ -1115,6 +1132,11 @@ function creaStreamVerticale(){
 
   const m = misureTela();
   tela = prova;
+  // La tela DEVE stare nella pagina. Staccata dal documento Safari non la considera
+  // disegnata e captureStream non produce un solo fotogramma: è così che è uscita
+  // una ripresa da 153 secondi e 0,0 MB. Invisibile sì, assente no.
+  tela.style.cssText = "position:absolute;left:0;top:0;width:1px;height:1px;opacity:.01;pointer-events:none;z-index:0";
+  document.querySelector(".palco").appendChild(tela);
   tela.width = m.l; tela.height = m.a;
   pennello = tela.getContext("2d", { alpha:false });
   if (!pennello){ tela = null; return null; }
@@ -1150,7 +1172,49 @@ function fermaTela(){
   disegnoTela = 0;
   // si fermano solo i binari video: l'audio appartiene alla fotocamera e serve ancora
   if (streamTela) streamTela.getVideoTracks().forEach(t => t.stop());
+  if (tela && tela.parentNode) tela.parentNode.removeChild(tela);
   streamTela = null; tela = null; pennello = null;
+}
+
+/* Collaudo della tela: una registrazione vera da sette decimi di secondo, con lo
+   stesso audio e lo stesso formato di quella buona, e poi si PESA il risultato.
+   Se escono zero byte la tela non funziona su questo Safari e lo si scopre adesso,
+   non alla fine di una ripresa di tre minuti. La prova deve essere identica alla
+   ripresa reale: una prova senza audio direbbe che va tutto bene anche quando è
+   proprio la coppia tela+microfono a non essere digerita. */
+let telaCollaudata = null;      // null non provata · true funziona · false scartata
+
+function collaudaTela(){
+  return new Promise(resolve => {
+    telaCollaudata = null;
+    if (!cfg.verticale || !stream){ resolve(false); return; }
+    const flusso = creaStreamVerticale();
+    if (!flusso){ telaCollaudata = false; resolve(false); return; }
+
+    const opzioni = {};
+    const mime = scegliFormato();
+    if (mime) opzioni.mimeType = mime;
+
+    let byte = 0, reg, chiuso = false;
+    const conclusione = esito => {
+      if (chiuso) return;
+      chiuso = true;
+      fermaTela();
+      telaCollaudata = esito;
+      resolve(esito);
+    };
+    try { reg = new MediaRecorder(flusso, opzioni); }
+    catch (e){ conclusione(false); return; }
+    reg.ondataavailable = ev => { if (ev.data) byte += ev.data.size; };
+    reg.onstop = () => conclusione(byte > 0);
+    reg.onerror = () => conclusione(false);
+    try { reg.start(); } catch (e){ conclusione(false); return; }
+    setTimeout(() => {
+      try { reg.stop(); } catch (e){ conclusione(false); }
+    }, 700);
+    // se Safari non chiude mai, non si resta appesi: dopo tre secondi si scarta
+    setTimeout(() => conclusione(byte > 0), 3000);
+  });
 }
 
 /* ---------- registrazione ---------- */
@@ -1198,17 +1262,18 @@ function avviaRegistrazione(){
   const opzioni = { videoBitsPerSecond: 12000000, audioBitsPerSecond: 128000 };
   if (mime) opzioni.mimeType = mime;
 
-  const sorgente = creaStreamVerticale() || stream;
+  // la tela si usa solo se il collaudo l'ha promossa: mai su fiducia
+  const sorgente = (telaCollaudata === true && creaStreamVerticale()) || stream;
   misuraRipresa = (sorgente !== stream && tela)
-    ? tela.width + "×" + tela.height + " verticale"
-    : pillRis.textContent;
+    ? tela.width + "×" + tela.height + " verticale · " + datiPista
+    : "coricato · " + datiPista;
 
   try {
     recorder = new MediaRecorder(sorgente, opzioni);
   } catch (e) {
     // se la tela non è digeribile per questo Safari si registra la fotocamera così
     // com'è: meglio una ripresa coricata che nessuna ripresa
-    if (sorgente !== stream){ fermaTela(); misuraRipresa = pillRis.textContent; }
+    if (sorgente !== stream){ fermaTela(); misuraRipresa = "coricato · " + datiPista; }
     try { recorder = new MediaRecorder(stream, opzioni); }
     catch (e2) {
       try { recorder = new MediaRecorder(stream); }
@@ -1254,29 +1319,66 @@ function concludiRegistrazione(){
   if (urlEsito) URL.revokeObjectURL(urlEsito);
   urlEsito = URL.createObjectURL(blob);
 
+  const titolo   = document.getElementById("esitoTitolo");
   const riquadro = document.getElementById("esitoVideo");
+  const salva    = document.getElementById("btnSalva");
+  const scarica  = document.getElementById("btnScarica");
+  const nota     = document.getElementById("esitoNota");
+  const peso     = blob.size < 1048576
+    ? Math.round(blob.size / 1024) + " KB"
+    : (blob.size / 1048576).toFixed(1) + " MB";
+
+  document.getElementById("esitoDati").textContent =
+    (misuraRipresa || pillRis.textContent) + " · " + durata + "s · " + peso + " · " + estensione.toUpperCase();
+
+  /* Una ripresa praticamente vuota non è una ripresa: un file di pochi kilobyte su
+     decine di secondi contiene l'intestazione e nient'altro. Prima l'app la
+     annunciava come «pronta» e mostrava un lettore rotto, e il difetto si scopriva
+     solo provando a salvarla — cioè dopo aver già girato tutto. */
+  const vuota = blob.size < 20000 || !pezziVideo.length;
+  riquadro.style.display = vuota ? "none" : "";
+  salva.style.display    = vuota ? "none" : "";
+  scarica.style.display  = vuota ? "none" : "";
+
+  if (vuota){
+    titolo.textContent = "Ripresa vuota — non è stato registrato niente";
+    nota.textContent =
+      "Il file è di " + peso + ": contiene solo l'intestazione, nessuna immagine. " +
+      ((misuraRipresa || "").indexOf("verticale") >= 0
+        ? "Stava registrando dalla tela verticale: spegni «Video verticale 9:16» nelle impostazioni e rifai la ripresa, uscirà coricata ma reale."
+        : "Non dipende dalla tela verticale, che era già spenta. Esci, riapri il copione e riprova: se succede ancora, va guardato il registratore di Safari.");
+    esitoEl.style.display = "block";
+    return;
+  }
+
+  titolo.textContent = "Registrazione pronta";
   riquadro.src = urlEsito;
   riquadro.load();      // senza questo Safari continua a mostrare la ripresa precedente
-  document.getElementById("esitoDati").textContent =
-    (misuraRipresa || pillRis.textContent) + " · " + durata + "s · " +
-    (blob.size / 1048576).toFixed(1) + " MB · " + estensione.toUpperCase();
-
-  const link = document.getElementById("btnScarica");
-  link.href = urlEsito;
-  link.download = nome;
+  scarica.href = urlEsito;
+  scarica.download = nome;
 
   const puoCondividere = navigator.canShare &&
     navigator.canShare({ files:[new File([blob], nome, { type: tipo })] });
-  document.getElementById("btnSalva").style.display = puoCondividere ? "" : "none";
-  document.getElementById("esitoNota").textContent = puoCondividere
+  salva.style.display = puoCondividere ? "" : "none";
+  nota.textContent = puoCondividere
     ? "«Salva nel rullino» apre il pannello di condivisione di iOS: scegli «Salva video» e il file finisce in Foto."
     : "Questo browser non espone la condivisione file: usa «Scarica il file», poi aprilo da File e salvalo in Foto.";
 
-  document.getElementById("btnSalva").onclick = async () => {
+  /* iOS accetta un solo pannello di condivisione per volta: un secondo tocco mentre
+     il primo è ancora aperto fa fallire tutto con «share() is already in progress»,
+     e sembra che il salvataggio non funzioni quando invece è solo in coda. */
+  let condivisioneAperta = false;
+  salva.onclick = async () => {
+    if (condivisioneAperta) return;
+    condivisioneAperta = true;
+    salva.textContent = "Attendi il pannello di iOS…";
     try {
       await navigator.share({ files:[new File([blob], nome, { type: tipo })] });
     } catch (e) {
       if (e && e.name !== "AbortError") alert("Salvataggio non riuscito: " + (e.message || e));
+    } finally {
+      condivisioneAperta = false;
+      salva.textContent = "Salva nel rullino";
     }
   };
 
