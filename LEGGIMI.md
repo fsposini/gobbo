@@ -147,6 +147,8 @@ tutto la funzione dalle impostazioni.
   l'obiettivo è dentro la Dynamic Island, in cima allo schermo.
 - **Specchia anteprima** — ti vedi come allo specchio. Non tocca il video registrato,
   che esce sempre nel verso giusto.
+- **Video verticale 9:16** — il video esce a 1080×1920, la misura dei Reel. Spiegato
+  sotto, in «Qualità del video». Lascialo acceso.
 - **Modalità solo testo** — spegne fotocamera e registrazione. Serve quando giri col
   telefono principale e usi questo dispositivo come secondo schermo.
 
@@ -191,9 +193,34 @@ Lo schermo resta acceso mentre il gobbo è aperto.
 
 ## Qualità del video
 
-L'app chiede 1080×1920 a 30 fps in H.264 — la risoluzione nativa dei Reel. Quello che
-la fotocamera concede davvero è scritto in alto a destra durante la ripresa: quel numero
-è misurato, non stimato.
+### Perché il video esce verticale (e perché non lo faceva)
+
+Safari non registra quello che vedi sullo schermo: registra il flusso grezzo della
+fotocamera, che nasce **coricato** perché il sensore dell'iPhone è orizzontale.
+L'anteprima sembra dritta solo perché è lo schermo a raddrizzarla al volo, ma il file
+che usciva conservava il verso del sensore, e Instagram se lo teneva così. Chiedere la
+verticale a Safari non serve: ignora il vincolo.
+
+Dalla v8 l'app non registra più la fotocamera. Registra una **tela 9:16 da 1080×1920**
+su cui ridisegna ogni fotogramma trenta volte al secondo, ritagliato come lo vedi
+nell'anteprima. Il verticale non è più una richiesta, è una costruzione.
+
+Due conseguenze da sapere:
+
+- il video registrato prende **un po' più ai lati** di quello che vedi sullo schermo,
+  perché lo schermo del telefono è più stretto di un 9:16. In alto e in basso invece
+  vedi esattamente quello che esce;
+- nel riquadro «Registrazione pronta» la prima riga dice `1080×1920 verticale` quando
+  la tela sta lavorando. Se quella parola manca, la tela non è partita e sei tornato
+  alla registrazione diretta: è il ripiego automatico, non un guasto.
+
+L'interruttore **«Video verticale 9:16»** nelle impostazioni la spegne. Va toccato solo
+se una ripresa dovesse uscire nera o non partire.
+
+### Il resto
+
+L'app chiede alla fotocamera 1080×1920 a 30 fps in H.264. Quello che concede davvero è
+scritto in alto a destra durante la ripresa: quel numero è misurato, non stimato.
 
 Rispetto all'app Fotocamera di iOS manca l'elaborazione dell'immagine (Smart HDR,
 stabilizzazione piena). In buona luce la differenza si nota poco, in penombra si nota.

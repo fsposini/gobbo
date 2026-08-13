@@ -287,6 +287,12 @@
         <div class="aiuto">Ti vedi come allo specchio, come in FaceTime. Non cambia il video registrato, che esce sempre nel verso giusto.</div>
 
         <div class="riga">
+          <label for="impVerticale">Video verticale 9:16</label>
+          <span class="switch"><input type="checkbox" id="impVerticale"><span></span></span>
+        </div>
+        <div class="aiuto">Il video esce verticale, 1080&times;1920, la misura dei Reel. Lasciato a s&eacute; Safari registra coricato, perch&eacute; salva il flusso della fotocamera nel verso del sensore. Spegnilo solo se la ripresa dovesse uscire nera o non partire: si torna a registrare la fotocamera cos&igrave; com'&egrave;.</div>
+
+        <div class="riga">
           <label for="impSoloTesto">Modalità solo testo</label>
           <span class="switch"><input type="checkbox" id="impSoloTesto"><span></span></span>
         </div>
@@ -369,13 +375,13 @@
 <script>
 "use strict";
 
-const VERSIONE = "v7";
+const VERSIONE = "v8";
 document.getElementById("etichettaVersione").textContent = VERSIONE;
 
 /* =========================================================
    Impostazioni persistenti
    ========================================================= */
-const PREDEFINITE = { velocita:140, corpo:34, banda:22, specchio:true, soloTesto:false, ascolto:true };
+const PREDEFINITE = { velocita:140, corpo:34, banda:22, specchio:true, soloTesto:false, ascolto:true, verticale:true };
 
 // quanto silenzio prima di fermare il testo, e dopo quanto l'ascolto si arrende
 const SILENZIO_MS = 1500;
@@ -515,7 +521,8 @@ const campi = {
   banda:    document.getElementById("impBanda"),
   specchio: document.getElementById("impSpecchio"),
   soloTesto:document.getElementById("impSoloTesto"),
-  ascolto:  document.getElementById("impAscolto")
+  ascolto:  document.getElementById("impAscolto"),
+  verticale:document.getElementById("impVerticale")
 };
 const valori = {
   velocita: document.getElementById("valVelocita"),
@@ -530,6 +537,7 @@ function riflettiCfg(){
   campi.specchio.checked  = cfg.specchio;
   campi.soloTesto.checked = cfg.soloTesto;
   campi.ascolto.checked   = cfg.ascolto;
+  campi.verticale.checked = cfg.verticale;
   valori.velocita.textContent = cfg.velocita + " ppm";
   valori.corpo.textContent    = cfg.corpo + " px";
   valori.banda.textContent    = cfg.banda + "%";
@@ -542,6 +550,7 @@ campi.banda.addEventListener("input",    e => { cfg.banda    = +e.target.value; 
 campi.specchio.addEventListener("change",  e => { cfg.specchio  = e.target.checked; salvaCfg(); applicaStile(); });
 campi.soloTesto.addEventListener("change", e => { cfg.soloTesto = e.target.checked; salvaCfg(); });
 campi.ascolto.addEventListener("change",   e => { cfg.ascolto   = e.target.checked; salvaCfg(); });
+campi.verticale.addEventListener("change", e => { cfg.verticale = e.target.checked; salvaCfg(); });
 
 document.getElementById("btnImpostazioni").addEventListener("click", () => {
   const visibile = pannello.style.display !== "none";
@@ -1044,6 +1053,7 @@ function aggiornaRisoluzione(){
 }
 
 function spegniCamera(){
+  fermaTela();
   if (stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
   videoEl.srcObject = null;
   if (audioCtx){ audioCtx.close().catch(() => {}); audioCtx = null; }
@@ -1077,6 +1087,71 @@ document.getElementById("messaggioAzione").addEventListener("click", () => {
   videoEl.style.display = "none";
   btnRec.style.display = "none";
 });
+
+/* ---------- video verticale 9:16 ----------
+   Safari non registra quello che vedi: registra il flusso grezzo della fotocamera,
+   che nasce coricato perché il sensore dell'iPhone è orizzontale. L'anteprima sembra
+   dritta solo perché è lo schermo a raddrizzarla, ma il file conserva il verso del
+   sensore e Instagram se lo tiene così. I vincoli di getUserMedia non bastano: iOS
+   li ignora e non c'è modo di sapere in anticipo cosa concederà.
+   Quindi non si registra la fotocamera: si registra una tela 9:16 su cui ogni
+   fotogramma viene ridisegnato ritagliato come nell'anteprima. Il verticale smette
+   di essere una richiesta e diventa una costruzione. */
+let tela = null, pennello = null, disegnoTela = 0, ultimoDisegno = 0, streamTela = null;
+let misuraRipresa = "";
+
+function misureTela(){
+  // la fotocamera può consegnare il fotogramma coricato: si guarda il lato corto
+  const corto = Math.min(videoEl.videoWidth || 1080, videoEl.videoHeight || 1920);
+  const larghezza = Math.min(1080, corto || 1080);
+  const pari = n => Math.round(n / 2) * 2;        // H.264 vuole i lati pari
+  return { l: pari(larghezza), a: pari(larghezza * 16 / 9) };
+}
+
+function creaStreamVerticale(){
+  if (!cfg.verticale || !stream) return null;
+  const prova = document.createElement("canvas");
+  if (typeof prova.captureStream !== "function") return null;   // browser troppo vecchio
+
+  const m = misureTela();
+  tela = prova;
+  tela.width = m.l; tela.height = m.a;
+  pennello = tela.getContext("2d", { alpha:false });
+  if (!pennello){ tela = null; return null; }
+
+  ultimoDisegno = 0;
+  const passo = ts => {
+    disegnoTela = requestAnimationFrame(passo);
+    if (!pennello) return;
+    if (ts - ultimoDisegno < 31) return;          // 30 fotogrammi al secondo, non 60
+    ultimoDisegno = ts;
+    const vl = videoEl.videoWidth, va = videoEl.videoHeight;
+    if (!vl || !va) return;
+    // "cover": riempie la tela e ritaglia quello che avanza, come fa l'anteprima.
+    // Il verso NON si specchia: lo specchio è solo un aiuto per chi si guarda.
+    const s = Math.max(tela.width / vl, tela.height / va);
+    const dl = vl * s, da = va * s;
+    pennello.drawImage(videoEl, (tela.width - dl) / 2, (tela.height - da) / 2, dl, da);
+  };
+  disegnoTela = requestAnimationFrame(passo);
+
+  let flusso;
+  try { flusso = tela.captureStream(30); }
+  catch (e) { fermaTela(); return null; }
+
+  // l'audio resta quello vero della fotocamera: la tela non ha voce
+  stream.getAudioTracks().forEach(t => flusso.addTrack(t));
+  streamTela = flusso;
+  return flusso;
+}
+
+function fermaTela(){
+  if (disegnoTela) cancelAnimationFrame(disegnoTela);
+  disegnoTela = 0;
+  // si fermano solo i binari video: l'audio appartiene alla fotocamera e serve ancora
+  if (streamTela) streamTela.getVideoTracks().forEach(t => t.stop());
+  streamTela = null; tela = null; pennello = null;
+}
 
 /* ---------- registrazione ---------- */
 function scegliFormato(){
@@ -1122,11 +1197,23 @@ function avviaRegistrazione(){
   const mime = scegliFormato();
   const opzioni = { videoBitsPerSecond: 12000000, audioBitsPerSecond: 128000 };
   if (mime) opzioni.mimeType = mime;
+
+  const sorgente = creaStreamVerticale() || stream;
+  misuraRipresa = (sorgente !== stream && tela)
+    ? tela.width + "×" + tela.height + " verticale"
+    : pillRis.textContent;
+
   try {
-    recorder = new MediaRecorder(stream, opzioni);
+    recorder = new MediaRecorder(sorgente, opzioni);
   } catch (e) {
-    try { recorder = new MediaRecorder(stream); }
-    catch (e2) { mostraMessaggio("Registrazione non supportata", "Questo browser non sa registrare video (" + (e2.message || e2) + ")."); return; }
+    // se la tela non è digeribile per questo Safari si registra la fotocamera così
+    // com'è: meglio una ripresa coricata che nessuna ripresa
+    if (sorgente !== stream){ fermaTela(); misuraRipresa = pillRis.textContent; }
+    try { recorder = new MediaRecorder(stream, opzioni); }
+    catch (e2) {
+      try { recorder = new MediaRecorder(stream); }
+      catch (e3) { mostraMessaggio("Registrazione non supportata", "Questo browser non sa registrare video (" + (e3.message || e3) + ")."); return; }
+    }
   }
   pezziVideo = [];
   recorder.ondataavailable = ev => { if (ev.data && ev.data.size) pezziVideo.push(ev.data); };
@@ -1162,6 +1249,7 @@ function concludiRegistrazione(){
   const estensione = tipo.includes("mp4") ? "mp4" : "webm";
   const durata = Math.round((Date.now() - avvioRec) / 1000);
   const nome = "reel-" + new Date().toISOString().slice(0,19).replace(/[:T]/g,"-") + "." + estensione;
+  fermaTela();          // la tela ha finito di servire: il registratore ha già chiuso
 
   if (urlEsito) URL.revokeObjectURL(urlEsito);
   urlEsito = URL.createObjectURL(blob);
@@ -1170,7 +1258,7 @@ function concludiRegistrazione(){
   riquadro.src = urlEsito;
   riquadro.load();      // senza questo Safari continua a mostrare la ripresa precedente
   document.getElementById("esitoDati").textContent =
-    pillRis.textContent + " · " + durata + "s · " +
+    (misuraRipresa || pillRis.textContent) + " · " + durata + "s · " +
     (blob.size / 1048576).toFixed(1) + " MB · " + estensione.toUpperCase();
 
   const link = document.getElementById("btnScarica");
