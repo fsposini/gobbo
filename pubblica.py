@@ -165,9 +165,23 @@ def alza_versione(nuova: int) -> None:
 
 
 def guscio_modificato() -> bool:
-    stato = git("status", "--porcelain")
-    for riga in stato.splitlines():
-        nome = riga[3:].strip().strip('"')
+    """Vero se è cambiato un file del guscio, e quindi va alzata la versione.
+
+    Il percorso NON va preso a colonna fissa. `git status --porcelain` scrive
+    « M index.html» con uno spazio davanti, ma git() applica .strip() a tutto
+    l'output e quello spazio sparisce **solo dalla prima riga**: tagliare a
+    riga[3:] leggeva «ndex.html» e concludeva che l'app era invariata.
+    Succedeva unicamente quando il file del guscio era il primo dell'elenco,
+    quindi il difetto si nascondeva ogni volta che modificavo anche altro.
+    Guasto reale del 13/08/2026: la v8 è stata pubblicata due volte, con
+    contenuti diversi e lo stesso numero. Si prende l'ultimo campo della riga,
+    che è sempre il percorso (anche per le righe di rinomina «R vecchio -> nuovo»).
+    """
+    for riga in git("status", "--porcelain").splitlines():
+        campi = riga.split()
+        if not campi:
+            continue
+        nome = campi[-1].strip('"')
         if nome.split("/")[-1] in GUSCIO:
             return True
     return False
