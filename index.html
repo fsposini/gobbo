@@ -247,6 +247,7 @@
       <button class="bottone chiaro" id="btnImpostazioni">Impostazioni</button>
     </div>
 
+    <div id="avvisoVersione"></div>
     <div id="statoLista"></div>
     <div id="elencoScript"></div>
 
@@ -375,7 +376,7 @@
 <script>
 "use strict";
 
-const VERSIONE = "v11";
+const VERSIONE = "v12";
 document.getElementById("etichettaVersione").textContent = VERSIONE;
 
 /* =========================================================
@@ -511,6 +512,31 @@ async function caricaElenco(forzaRete){
   });
 }
 
+/* Se il telefono sta usando una versione vecchia non c'era modo di accorgersene:
+   si provavano funzioni che sul telefono non esistevano ancora, e sembravano rotte.
+   Si legge il numero dentro sw.js — è un file piccolo — e lo si confronta con quello
+   in esecuzione. Succede davvero: il 13/08/2026 il telefono è rimasto alla v10
+   mentre online c'era la v11. */
+async function controllaVersione(){
+  const box = document.getElementById("avvisoVersione");
+  box.innerHTML = "";
+  try {
+    const r = await fetch("sw.js?t=" + Date.now(), { cache:"reload" });
+    if (!r.ok) return;
+    const m = (await r.text()).match(/const CACHE = "gobbo-(v\d+)"/);
+    if (!m || m[1] === VERSIONE) return;
+    box.innerHTML =
+      '<div class="avviso"><strong>Sul telefono c\'è la ' + VERSIONE +
+      ', ma online c\'è la ' + fuggi(m[1]) + '.</strong><br>' +
+      'Le funzioni nuove non ci sono finché non aggiorni.' +
+      '<button class="bottone" id="btnRicarica" style="margin-top:10px;display:block;width:100%">' +
+      'Aggiorna adesso</button></div>';
+    document.getElementById("btnRicarica").addEventListener("click", () => {
+      location.reload();
+    });
+  } catch (e) { /* senza rete si continua con quello che c'è */ }
+}
+
 /* =========================================================
    Impostazioni — interfaccia
    ========================================================= */
@@ -557,7 +583,10 @@ document.getElementById("btnImpostazioni").addEventListener("click", () => {
   pannello.style.display = visibile ? "none" : "block";
   if (!visibile) pannello.scrollIntoView({ behavior:"smooth", block:"start" });
 });
-document.getElementById("btnAggiorna").addEventListener("click", () => caricaElenco(true));
+document.getElementById("btnAggiorna").addEventListener("click", () => {
+  caricaElenco(true);
+  controllaVersione();
+});
 
 /* =========================================================
    Schermata gobbo
@@ -577,6 +606,7 @@ const messaggioEl  = document.getElementById("messaggio");
 const esitoEl      = document.getElementById("esito");
 
 let stream = null, recorder = null, pezziVideo = [], wakeLock = null;
+let byteRegistrati = 0, ultimaCrescita = 0, interrotta = false;
 let scorre = false, posizione = 0, ultimoFrame = 0, animazione = 0;
 let altezzaTesto = 0, altezzaDetta = 0, paroleCopione = 0, avvioRec = 0, timerRec = 0;
 let modalitaCamera = true;
@@ -1267,7 +1297,10 @@ function avviaConConteggio(){
 
 function avviaRegistrazione(){
   const mime = scegliFormato();
-  const opzioni = { videoBitsPerSecond: 12000000, audioBitsPerSecond: 128000 };
+  /* 8 Mbit/s, non 12. Su 1080×1920 la differenza a occhio non si vede — Instagram
+     ricomprime tutto intorno ai 3,5 — mentre sulla memoria si vede eccome: a 12
+     una ripresa di due minuti e mezzo accumulava ~230 MB dentro la pagina. */
+  const opzioni = { videoBitsPerSecond: 8000000, audioBitsPerSecond: 128000 };
   if (mime) opzioni.mimeType = mime;
 
   // la tela si usa solo se il collaudo l'ha promossa: mai su fiducia
@@ -1289,16 +1322,43 @@ function avviaRegistrazione(){
     }
   }
   pezziVideo = [];
-  recorder.ondataavailable = ev => { if (ev.data && ev.data.size) pezziVideo.push(ev.data); };
-  recorder.onstop = concludiRegistrazione;
-  recorder.start();
-
+  byteRegistrati = 0;
+  interrotta = false;
   avvioRec = Date.now();
+  ultimaCrescita = avvioRec;
+
+  recorder.ondataavailable = ev => {
+    if (ev.data && ev.data.size){
+      pezziVideo.push(ev.data);
+      byteRegistrati += ev.data.size;
+      ultimaCrescita = Date.now();
+    }
+  };
+  recorder.onstop = concludiRegistrazione;
+  recorder.onerror = () => { interrotta = true; fermaRegistrazione(); };
+
+  /* Un pezzo al secondo, non un unico blocco alla fine. Con start() senza argomenti
+     Safari tiene l'intero filmato in memoria fino allo stop: dieci secondi passano,
+     due minuti e mezzo no, e la ripresa si perde tutta. Coi pezzi da un secondo la
+     memoria si svuota via via, e se qualcosa si rompe a metà quello che è già stato
+     registrato resta buono. */
+  recorder.start(1000);
+
   pillTempo.style.display = "";
   pillTempo.textContent = "0:00";
   timerRec = setInterval(() => {
     const s = Math.floor((Date.now() - avvioRec) / 1000);
-    pillTempo.textContent = Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
+    const mb = byteRegistrati / 1048576;
+    pillTempo.textContent = Math.floor(s/60) + ":" + String(s%60).padStart(2,"0") +
+      (byteRegistrati ? " · " + (mb < 10 ? mb.toFixed(1) : Math.round(mb)) + " MB" : "");
+
+    /* Se per sei secondi non arriva un byte, il registratore è morto in piedi: il
+       tempo scorre, la pillola sembra viva e non si sta salvando niente. Meglio
+       fermarsi e tenere il pezzo buono che scoprirlo alla fine del copione. */
+    if (recorder && recorder.state === "recording" && Date.now() - ultimaCrescita > 6000){
+      interrotta = true;
+      fermaRegistrazione();
+    }
   }, 250);
 
   btnRec.classList.add("stop");
@@ -1359,7 +1419,12 @@ function concludiRegistrazione(){
     return;
   }
 
-  titolo.textContent = "Registrazione pronta";
+  /* Interrotta a metà ma con dentro qualcosa: il pezzo registrato è valido e va
+     offerto, non buttato. Con i pezzi da un secondo il file si chiude sano anche
+     se lo stop arriva a sorpresa. */
+  titolo.textContent = interrotta
+    ? "Ripresa interrotta — ho salvato fin dove è arrivata"
+    : "Registrazione pronta";
   riquadro.src = urlEsito;
   riquadro.load();      // senza questo Safari continua a mostrare la ripresa precedente
   scarica.href = urlEsito;
@@ -1444,6 +1509,7 @@ window.addEventListener("resize", () => {
    Avvio
    ========================================================= */
 caricaElenco(false);
+controllaVersione();
 
 if ("serviceWorker" in navigator){
   window.addEventListener("load", () => {
