@@ -382,7 +382,7 @@
 <script>
 "use strict";
 
-const VERSIONE = "v13";
+const VERSIONE = "v14";
 document.getElementById("etichettaVersione").textContent = VERSIONE;
 
 /* =========================================================
@@ -1074,6 +1074,7 @@ async function accendiCamera(){
   }
   videoEl.srcObject = stream;
   try { await videoEl.play(); } catch (e) {}
+  await allargaCampo();
   aggiornaRisoluzione();
   preparaAscolto();
   azzeraAscolto();
@@ -1082,6 +1083,30 @@ async function accendiCamera(){
   pillRis.textContent = "controllo il verticale…";
   await collaudaTela();
   aggiornaRisoluzione();
+}
+
+/* Il campo visivo più largo che la fotocamera concede.
+   iOS a volte consegna a una pagina web un'immagine già ingrandita rispetto a quella
+   che l'app Fotocamera usa per sé. Se il binario video espone la capacità "zoom", la
+   si porta al minimo — cioè al più largo possibile. Non può stringere: se il minimo
+   è già quello in uso non tocca niente. */
+let notaCampo = "";
+
+async function allargaCampo(){
+  notaCampo = "";
+  if (!stream) return;
+  const t = stream.getVideoTracks()[0];
+  if (!t || !t.getCapabilities) { notaCampo = "campo non interrogabile"; return; }
+  let cap = null, imp = null;
+  try { cap = t.getCapabilities(); imp = t.getSettings ? t.getSettings() : {}; }
+  catch (e) { notaCampo = "campo non interrogabile"; return; }
+  if (!cap || !cap.zoom || typeof cap.zoom.min !== "number"){ notaCampo = "campo fisso"; return; }
+  const ora = typeof imp.zoom === "number" ? imp.zoom : null;
+  if (ora !== null && ora <= cap.zoom.min){ notaCampo = "campo già al massimo"; return; }
+  try {
+    await t.applyConstraints({ advanced: [{ zoom: cap.zoom.min }] });
+    notaCampo = "campo allargato " + (ora === null ? "" : ora + "→") + cap.zoom.min;
+  } catch (e) { notaCampo = "campo non allargabile"; }
 }
 
 /* Cosa la fotocamera consegna DAVVERO, nell'ordine in cui lo dichiara lei.
@@ -1100,7 +1125,8 @@ function aggiornaRisoluzione(){
   // in verticale iOS può riportare le dimensioni al contrario: mostro sempre L×A del video girato
   const l = Math.min(s.width, s.height), a = Math.max(s.width, s.height);
   const fps = s.frameRate ? Math.round(s.frameRate) + " fps" : "";
-  datiPista = l + "×" + a + (fps ? " · " + fps : "") + " · pista " + pistaGrezza;
+  datiPista = l + "×" + a + (fps ? " · " + fps : "") + " · pista " + pistaGrezza +
+              (notaCampo ? " · " + notaCampo : "");
 
   const verso = telaCollaudata === true  ? " · verticale"
               : telaCollaudata === false ? " · coricato"
