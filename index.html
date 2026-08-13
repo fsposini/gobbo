@@ -375,7 +375,7 @@
 <script>
 "use strict";
 
-const VERSIONE = "v10";
+const VERSIONE = "v11";
 document.getElementById("etichettaVersione").textContent = VERSIONE;
 
 /* =========================================================
@@ -1250,9 +1250,17 @@ function contoAllaRovescia(poi){
   }, 900);
 }
 
+/* Da dove è partita l'ultima ripresa. Serve a «Rifai la ripresa»: se hai girato
+   il secondo pezzo del copione e vuoi rifarlo, devi tornare all'inizio di QUEL
+   pezzo, non all'inizio di tutto. */
+let posizioneAvvio = 0;
+
 function avviaConConteggio(){
   if (!stream){ mostraMessaggio("Nessuna fotocamera", "Senza fotocamera non posso registrare. Usa la modalità solo testo e riprendi con un altro dispositivo."); return; }
-  daCapo();
+  // Niente daCapo(): si registra da dove hai messo il testo. Se la prima parte è
+  // già girata ti porti al punto giusto col dito o coi tasti di salto e parti da lì.
+  // La riga che vedi sulla banda di lettura è la prima che dirai.
+  posizioneAvvio = posizione;
   azzeraAscolto();
   contoAllaRovescia(avviaRegistrazione);
 }
@@ -1403,7 +1411,9 @@ function scartaEsito(){
 
 document.getElementById("btnRifai").addEventListener("click", () => {
   scartaEsito();
-  daCapo();
+  // si rifà LA STESSA presa: si torna dove era partita, non in cima al copione
+  posizione = posizioneAvvio;
+  disegna();
   azzeraAscolto();
   sistemaHud();
 });

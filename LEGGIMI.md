@@ -175,6 +175,18 @@ e lo scorrimento non si ferma.
 
 Il tasto `↺` riporta il testo all'inizio.
 
+### Partire da metà copione
+
+**La ripresa parte da dove hai lasciato il testo, non dall'inizio.** Se la prima parte
+l'hai già girata, portati col dito sul punto da cui vuoi ricominciare e premi il pulsante
+rosso: la riga che vedi sulla banda di lettura, quella fra le due frecce, è la prima che
+dirai. Un copione lungo si gira così in tre o quattro pezzi, senza rifare ogni volta
+tutto dall'inizio.
+
+Di conseguenza **«Rifai la ripresa» torna dove era partita quella presa**, non in cima al
+copione: se stavi girando il terzo pezzo e ti inceppi, ricominci il terzo pezzo. Per
+tornare davvero all'inizio c'è il tasto `↺`.
+
 ---
 
 ## Installare l'app sul telefono
