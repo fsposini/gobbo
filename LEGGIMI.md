@@ -29,6 +29,16 @@ registrazione parte insieme.
 Alla fine tocca «Salva nel rullino»: iOS apre il pannello di condivisione, scegli
 *Salva video* e il file finisce in Foto, pronto per Instagram.
 
+### Togliere un copione dall'elenco
+
+In alto a destra di ogni scheda c'è una **✕**: la tocchi, confermi, e quel copione
+sparisce dall'elenco. È una pulizia **di quel telefono**, non una cancellazione: il file
+resta in `scripts\` sul PC e resta online. In fondo alla lista compare la riga
+«N copioni tolti dall'elenco»: aprila e con «Rimetti» torna al suo posto.
+
+Se un copione lo vuoi eliminare davvero, cancella il file `.md` da `scripts\` sul PC e
+rilancia `PUBBLICA.bat`: sparisce per tutti, e l'app si accorge da sola che non esiste più.
+
 ### La prima volta
 
 Nessun login da fare. `PUBBLICA.bat` riusa l'accesso a GitHub che il Gestore credenziali

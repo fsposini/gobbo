@@ -5,9 +5,9 @@ formato: polarizzante
 
 Tre cose che fai per scaricare lo stress. E che, per come le usi tu, probabilmente te lo stanno aumentando.
 
-Uno. L'allenamento intenso la sera, dopo una giornata piena in ufficio, come valvola di sfogo.
+Uno. L'allenamento ad alta intensità dopo una giornata piena in ufficio, come valvola di sfogo per lo stress.
 
-Se il tuo sistema è già scarico, l'alta intensità di sera non lo scarica: lo tiene acceso proprio nell'ora in cui dovrebbe spegnersi. La stessa identica sessione, fatta entro metà pomeriggio, va benissimo.
+Se il tuo sistema nervoso è già scarico, il problema non è l'orario: è l'intensità. In quello stato l'alta intensità va tolta del tutto, non spostata prima. Meglio un'attività a bassa intensità: una camminata, mobilità, aerobica leggera.
 
 Due. La doccia fredda, o il bagno di ghiaccio, come soluzione per lo stress.
 

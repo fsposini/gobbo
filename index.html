@@ -67,6 +67,38 @@
   .anteprima{margin:9px 0 0;font-size:13.5px;line-height:1.45;color:var(--testo);opacity:.72;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
+  /* La ✕ per togliere un copione sta SOPRA la scheda, non dentro: un pulsante
+     dentro un altro pulsante è HTML non valido e su Safari il tocco finisce
+     sul pulsante esterno, cioè aprirebbe il copione invece di toglierlo. */
+  .voce{position:relative}
+  .voce .scheda{padding-right:52px}
+  .togli{
+    position:absolute;top:5px;right:4px;width:44px;height:44px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:21px;line-height:1;color:var(--secondario);border-radius:50%;
+  }
+  .togli:active{background:rgba(159,122,108,.14);color:var(--rame)}
+
+  .tolti{margin:16px 0 0}
+  .tolti summary{
+    font-size:13.5px;color:var(--secondario);padding:9px 2px;cursor:pointer;
+  }
+  .tolti summary::-webkit-details-marker{color:var(--secondario)}
+  .tolto{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:rgba(255,255,255,.6);border:1px dashed rgba(173,187,192,.75);
+    border-radius:11px;padding:10px 6px 10px 13px;margin-bottom:8px;
+  }
+  .tolto .nome{
+    font-size:13.5px;line-height:1.35;color:var(--testo);opacity:.78;
+    min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .tolto button{
+    flex:0 0 auto;font-size:13.5px;font-weight:650;color:var(--blu);
+    padding:8px 12px;border-radius:9px;
+  }
+  .tolto button:active{background:rgba(27,84,155,.1)}
+
   .avviso{
     background:#fff;border:1px solid rgba(173,187,192,.5);border-left:3px solid var(--rame);
     border-radius:11px;padding:14px 16px;font-size:14px;line-height:1.55;margin-bottom:14px;
@@ -250,6 +282,7 @@
     <div id="avvisoVersione"></div>
     <div id="statoLista"></div>
     <div id="elencoScript"></div>
+    <div id="elencoTolti"></div>
 
     <!-- impostazioni, nascoste di default -->
     <div id="pannelloImpostazioni" style="display:none">
@@ -388,7 +421,7 @@
 <script>
 "use strict";
 
-const VERSIONE = "v16";
+const VERSIONE = "v17";
 document.getElementById("etichettaVersione").textContent = VERSIONE;
 
 /* =========================================================
@@ -478,12 +511,27 @@ function durataLeggibile(sec){
    Schermata lista
    ========================================================= */
 const elencoEl = document.getElementById("elencoScript");
+const toltiEl  = document.getElementById("elencoTolti");
 const statoEl  = document.getElementById("statoLista");
 let copioni = [];
+
+/* Copioni tolti dall'elenco: restano sul PC e online, qui si segna solo quali
+   nomi questo telefono non deve piu' mostrare. Cosi' l'app non ha bisogno di
+   scrivere da nessuna parte se non nella propria memoria. */
+let tolti = [];
+try {
+  const letti = JSON.parse(localStorage.getItem("gobbo.tolti") || "[]");
+  if (Array.isArray(letti)) tolti = letti.filter(x => typeof x === "string");
+} catch (e) { /* memoria illeggibile: si riparte dall'elenco intero */ }
+
+function salvaTolti(){
+  try { localStorage.setItem("gobbo.tolti", JSON.stringify(tolti)); } catch (e) {}
+}
 
 async function caricaElenco(forzaRete){
   statoEl.innerHTML = '<div class="avviso">Carico i copioni…</div>';
   elencoEl.innerHTML = "";
+  toltiEl.innerHTML = "";
   const opz = forzaRete ? { cache:"reload" } : {};
   try {
     const r = await fetch("scripts/index.json?t=" + Date.now(), opz);
@@ -498,18 +546,42 @@ async function caricaElenco(forzaRete){
     return;
   }
 
+  /* Un copione cancellato dal PC non deve restare per sempre fra i tolti:
+     si tiene solo cio' che esiste ancora, altrimenti l'elenco cresce a vuoto. */
+  const presenti = {};
+  copioni.forEach(s => { presenti[s.file] = true; });
+  const rimasti = tolti.filter(f => presenti[f]);
+  if (rimasti.length !== tolti.length){ tolti = rimasti; salvaTolti(); }
+
+  mostraElenco();
+}
+
+/* Disegna la lista. Separata dal caricamento perché togliere o rimettere un
+   copione ridisegna soltanto, senza tornare in rete. */
+function mostraElenco(){
+  elencoEl.innerHTML = "";
+  toltiEl.innerHTML = "";
+
   if (!copioni.length){
     statoEl.innerHTML =
       '<div class="avviso"><strong>Nessun copione ancora.</strong><br>' +
-      'Metti un file <code>.md</code> nella cartella <code>scripts\\</code> del progetto sul PC ' +
+      'Metti un file <code>.md</code> nella cartella <code>scripts\</code> del progetto sul PC ' +
       'e lancia <code>PUBBLICA.bat</code>. Fra un minuto compare qui.</div>';
     return;
   }
 
-  statoEl.innerHTML = "";
-  copioni.forEach((s, i) => {
+  const visibili = copioni.filter(s => tolti.indexOf(s.file) === -1);
+  statoEl.innerHTML = visibili.length ? "" :
+    '<div class="avviso"><strong>Hai tolto tutti i copioni dall\'elenco.</strong><br>' +
+    'Sono ancora al loro posto: qui sotto li rimetti quando vuoi.</div>';
+
+  visibili.forEach(s => {
+    const voce = document.createElement("div");
+    voce.className = "voce";
+
     const b = document.createElement("button");
     b.className = "scheda";
+    b.type = "button";
     b.innerHTML =
       "<h2>" + fuggi(s.titolo || s.file) + "</h2>" +
       '<div class="meta">' +
@@ -520,8 +592,62 @@ async function caricaElenco(forzaRete){
       "</div>" +
       (s.incipit ? '<p class="anteprima">' + fuggi(s.incipit) + "</p>" : "");
     b.addEventListener("click", () => apriCopione(s));
-    elencoEl.appendChild(b);
+
+    const x = document.createElement("button");
+    x.className = "togli";
+    x.type = "button";
+    x.setAttribute("aria-label", "Togli dall'elenco");
+    x.innerHTML = "&times;";
+    x.addEventListener("click", ev => {
+      ev.stopPropagation();
+      const nome = s.titolo || s.file;
+      const ok = confirm("Tolgo «" + nome + "» dall'elenco?\n\n" +
+        "Sparisce da questo telefono. Il copione resta al suo posto: in fondo alla lista puoi rimetterlo.");
+      if (!ok) return;
+      tolti.push(s.file);
+      salvaTolti();
+      mostraElenco();
+    });
+
+    voce.appendChild(b);
+    voce.appendChild(x);
+    elencoEl.appendChild(voce);
   });
+
+  if (!tolti.length) return;
+
+  const scatola = document.createElement("details");
+  scatola.className = "tolti";
+  const titolo = document.createElement("summary");
+  titolo.textContent = tolti.length === 1
+    ? "1 copione tolto dall'elenco"
+    : tolti.length + " copioni tolti dall'elenco";
+  scatola.appendChild(titolo);
+
+  tolti.slice().forEach(file => {
+    const dati = copioni.find(s => s.file === file);
+    const riga = document.createElement("div");
+    riga.className = "tolto";
+
+    const nome = document.createElement("span");
+    nome.className = "nome";
+    nome.textContent = (dati && dati.titolo) || file;
+
+    const rimetti = document.createElement("button");
+    rimetti.type = "button";
+    rimetti.textContent = "Rimetti";
+    rimetti.addEventListener("click", () => {
+      tolti = tolti.filter(f => f !== file);
+      salvaTolti();
+      mostraElenco();
+    });
+
+    riga.appendChild(nome);
+    riga.appendChild(rimetti);
+    scatola.appendChild(riga);
+  });
+
+  toltiEl.appendChild(scatola);
 }
 
 /* Se il telefono sta usando una versione vecchia non c'era modo di accorgersene:
