@@ -5,9 +5,9 @@ formato: polarizzante
 
 Sei un manager o un imprenditore e usi tre strumenti per scaricare lo stress. Per come li usi tu, probabilmente te lo stanno aumentando. Il terzo è quello che sbagliano quasi tutti.
 
-Uno. L'allenamento ad alta intensità dopo una giornata piena in ufficio, come valvola di sfogo per lo stress.
+Uno. Il caffè appena sveglio, o quello del pomeriggio per reggere, come motore per ripartire.
 
-Se il tuo sistema nervoso è già scarico, il problema non è l'orario: è l'intensità. In quello stato l'alta intensità va tolta del tutto, non spostata prima. Meglio un'attività a bassa intensità: una camminata, mobilità, aerobica leggera.
+Se al mattino non senti la spinta naturale e sei tu ad accenderla con la caffeina, il problema non è il caffè: è che il picco di cortisolo che dovrebbe darti quella spinta si è appiattito. Il caffè copre il buco, non lo richiude.
 
 Due. La doccia fredda, o il bagno di ghiaccio, come soluzione per lo stress.
 
@@ -15,9 +15,9 @@ Il freddo non è un calmante: è uno stimolo che accende il sistema, non lo speg
 
 [CTA a metà] Sono Federico Sposini, medico, e mi occupo di stress e recupero attraverso il sistema nervoso. Se ti interessa, seguimi — la terza è quella che quasi nessuno si aspetta.
 
-Tre. Il digiuno intermittente, fatto perché va di moda, come soluzione buona per chiunque.
+Tre. L'allenamento ad alta intensità dopo una giornata piena in ufficio, come valvola di sfogo per lo stress.
 
-Il digiuno funziona su un sistema che ha ancora risorse da usare. Su un sistema già esaurito non è un reset: è un carico in più.
+Se il tuo sistema nervoso è già scarico, il problema non è l'orario: è l'intensità. In quello stato l'alta intensità va tolta del tutto, non spostata prima. Meglio un'attività a bassa intensità: una camminata, mobilità, aerobica leggera.
 
 Tre strumenti validi. Il problema non è lo strumento: è usarlo senza sapere in che stato è il tuo sistema in quel momento. E quello stato non si intuisce — si misura.
 
